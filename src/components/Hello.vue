@@ -88,10 +88,13 @@
   </div>
 </template>
   
-  <script setup>
+<script setup>
   import axios from 'axios';
   import { ref } from 'vue';
   import { ElMessage, ElMessageBox } from 'element-plus'
+
+  import { useUserStore } from '@/stores/user'
+  const userStore = useUserStore()
   
   const userName = ref('');
   const password = ref('');
@@ -414,6 +417,7 @@
         console.log("Login success");
         returnedUserName.value = response.data.data.userInfo.userName;
         emit('emit-user-name', returnedUserName.value);
+        userStore.login();
       } else if (response.data.code == 502) {
         ElMessageBox.alert('用户名或密码错误', '提示', {
         // if you want to disable its autofocus
@@ -440,4 +444,4 @@
         loading.value = false;
     }
   };
-  </script>
+</script>

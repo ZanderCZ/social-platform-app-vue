@@ -77,9 +77,23 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 const props = defineProps({
     passedUserName: String,
 })
+import { useUserStore } from'@/stores/user'
+const userStore = useUserStore()
 
 const exitLogin = () => {
-    
+  ElMessageBox.confirm(
+      '确定要退出登录吗?',
+      '警告',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+      .then(() => {
+        userStore.logout()
+      })
+      .catch(() => {})
 };
 
 const clickEditButton = () => {
