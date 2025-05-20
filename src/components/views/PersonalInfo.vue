@@ -93,6 +93,12 @@ const clickEditButton = () => {
 
 const finishEditing = async () => {
     isEditing.value = false;
+    var submitRegion = ''
+    if (typeof formData.value.region == 'string') {
+      submitRegion = formData.value.region
+    } else {
+      submitRegion = formData.value.region?.[2]
+    }
     try {
         const response = await axios.put('http://localhost:8080/api/user', {
             userName: currentUserName.value,
@@ -101,7 +107,7 @@ const finishEditing = async () => {
             gender: formData.value.gender,
             email: formData.value.email,
             password: formData.value.password,
-            region: formData.value.region?.[2] || '',  // 取最后一级区域名
+            region: submitRegion,  // 取最后一级区域名
         })
         console.log('Success', response);
         ElMessageBox.alert('保存成功', '提示', {
@@ -125,7 +131,7 @@ const imageSrc = ref('https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55
 
 onMounted(async () => {
     currentUserName.value = props.passedUserName;
-    imageSrc.value = 'http://localhost:8080/uploads/' + currentUserName.value + '.jpg';
+    imageSrc.value = 'http://localhost:8080/uploads/' + currentUserName.value + '.jpg?t=' + Date.now();
     console.log('onMounted: imageSrc.value:', imageSrc.value);
 
     try {
@@ -174,10 +180,11 @@ const submitImage = async () => {
     try {
         const imageData = await changeImage(currentUserName.value, selectedFile.value);
         imageSrc.value = imageData.data;
-        console.log('imageSrc: ' + imageSrc);
+        console.log('imageSrc: ' + imageSrc.value);
         ElMessageBox.alert('图片上传成功', '提示', {
         confirmButtonText: 'OK',
         callback: (action) => {
+          imageSrc.value = 'http://localhost:8080/uploads/' + currentUserName.value + '.jpg?t=' + Date.now();
         },
         })
     } catch (error) {

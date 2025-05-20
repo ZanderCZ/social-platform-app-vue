@@ -66,7 +66,7 @@
         path: '/index',
         query: {
         status: '3-1',
-        userName: passedUserName
+        userName: 'admin'
         }
     })
   }
@@ -128,7 +128,7 @@
   
   onMounted(async () => {
       currentUserName.value = passedUserName;
-      imageSrc.value = 'http://localhost:8080/uploads/' + currentUserName.value + '.jpg';
+      imageSrc.value = 'http://localhost:8080/uploads/' + currentUserName.value + '.jpg?t=' + Date.now();
       console.log('onMounted: imageSrc.value:', imageSrc.value);
   
       try {

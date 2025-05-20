@@ -1,12 +1,13 @@
 <script setup>
 import axios from 'axios';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 const router = useRouter()
 
 const numberOfUsers = ref(0);
 const userList = ref([]);
+const currentPage = ref(1);
 
 const getUserCount = async () => {
     // 获取用户数量
@@ -89,29 +90,51 @@ const deleteButtonPressed = async (userName) => {
   .catch(() => {});
 }
 
+const pageSize = 3;
+const paginatedUsers = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  const end = start + pageSize
+  return userList.value.slice(start, end)
+})
+
 
 </script>
 
 <template>
     <h1>用户管理</h1>
     <el-space wrap direction="vertical">
+        <el-autocomplete
+            v-model="state2"
+            :fetch-suggestions="querySearch"
+            :trigger-on-focus="false"
+            clearable
+            class="inline-input w-50"
+            placeholder="Please Input"
+            @select="handleSelect"
+        />
         <div v-if="numberOfUsers == 0">
             <h1>没有用户记录</h1>
         </div>
         <div v-else>
             <el-space wrap direction="vertical">
-                <div v-for="(user, index) in userList" :key="user.userId">
-                    <el-descriptions border size="default" :column="3" class="user-descriptions">
+                <div v-for="(user, index) in paginatedUsers" :key="user.userId">
+                    <el-descriptions border size="default" :column="3" class="user-descriptions" :label-width="1000">
                         <el-descriptions-item
-                        :rowspan="2"
+                        :rowspan="3"
                         :width="90"
                         label="Photo"
                         align="center"
                         >
-                        <el-image
-                            style="width: 50px; height: 50px"
-                            :src="`http://localhost:8080/uploads/${user.userName}.jpg`"
-                        />
+                            <el-image
+                                style="width: 50px; height: 50px"
+                                :src="`http://localhost:8080/uploads/${user.userName}.jpg?t=${Date.now()}`"
+                            >
+                                <template #error>
+                                    <div class="image-slot">
+                                        <p>未上传</p>
+                                    </div>
+                                </template>
+                            </el-image>
                         </el-descriptions-item>
                         <el-descriptions-item label="用户名">{{ user.userName }}</el-descriptions-item>
                         <el-descriptions-item label="性别">{{ user.gender }}</el-descriptions-item>
@@ -130,11 +153,18 @@ const deleteButtonPressed = async (userName) => {
                         </el-descriptions-item>
                     </el-descriptions>
                 </div>
-                <el-pagination layout="prev, pager, next" :total="numberOfUsers*10/5" />
+                <!-- <el-pagination v-model="currentPage" layout="prev, pager, next" :total="numberOfUsers*10/5" /> -->
+                <el-pagination
+                    v-model:current-page="currentPage"
+                    :page-size="pageSize"
+                    layout="prev, pager, next"
+                    :total="userList.length"
+                    background
+                />
             </el-space>
         </div>
     </el-space>
-    <p>{{ userList }}</p>
+    <!-- <p>{{ userList }}</p> -->
 </template>
 
 <style>
