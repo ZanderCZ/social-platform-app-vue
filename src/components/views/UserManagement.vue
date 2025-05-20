@@ -70,15 +70,20 @@ const deleteButtonPressed = async (userName) => {
       type: 'warning',
     }
   )
-  .then(async () => {  // 加上 async
-    try {
-      const response = await axios.get('http://localhost:8080/api/user/byUserName/' + userName);
-      console.log('Successfully get user by userName', response);
-      deleteById(response.data.data.userId);
-      getUserList();
+  .then(async () => {
+  try {
+    const response = await axios.get('http://localhost:8080/api/user/byUserName/' + userName);
+    console.log('Successfully get user by userName', response);
+    
+    // 等待删除完成再刷新列表
+    await deleteById(response.data.data.userId);  
+    await getUserList();  // 这里也加上 await
+
+    // 更新用户数量
+    await getUserCount();
+
     } catch (error) {
-      console.log('Failed to get user by userName', error);
-      throw error;
+        console.log('Failed to get user by userName or delete user', error);
     }
   })
   .catch(() => {});
