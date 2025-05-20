@@ -59,6 +59,8 @@ const props = defineProps({
 })
 import { useUserStore } from'@/stores/user'
 const userStore = useUserStore()
+import { useRouter } from 'vue-router'
+const router = useRouter()
 
 const formData = ref({
   userName: '',
@@ -83,6 +85,9 @@ const exitLogin = () => {
     )
     .then(() => {
       userStore.logout()
+      router.push({
+          path: '/',
+        })
     })
     .catch(() => {})
 };
