@@ -1,74 +1,53 @@
 <template>
-    <h1>PersonalInfo</h1>
-    <el-space wrap direction="vertical">
-        <div>
-            <el-avatar
-                :src="imageSrc"
-                :size = 100
-            />
-            <div v-if="isEditing">
-                <input type="file" @change="handleFileChange" accept="image/*" />
-            </div>
-        </div>
-        <div>
-            <span class="demonstration">用户名  </span>
-            <el-input
-                v-model="currentUserName"
-                style="width: 240px"
-                :disabled="!isEditing"
-            />
-        </div>
-        <div>
-            <span class="demonstration">密码  </span>
-            <el-input
-                v-model="password"
-                style="width: 240px"
-                :disabled="!isEditing"
-                show-password
-            />
-        </div>
-        <div>
-            <span class="demonstration">邮箱  </span>
-            <el-input
-                v-model="email"
-                style="width: 240px"
-                :disabled="!isEditing"
-            />
-        </div>
-        <div class="demo-date-picker">
-            <div class="block">
-            <span class="demonstration">出生日期  </span>
-            <el-date-picker
-                v-model="birthday"
-                type="date"
-                placeholder="Pick a day"
-                :disabled="!isEditing"
-            />
-            </div>
-        </div>
-        <div>
-            <span class="demonstration">手机号  </span>
-            <el-input
-                v-model="phone"
-                style="width: 240px"
-                :disabled="!isEditing"
-            />
-        </div>
-        <div>
-            <span class="demonstration">地区  </span>
-            <el-cascader :disabled="!isEditing" v-model="region" :options="regionOptions" :show-all-levels="false" plcaeholder="选择地区" />
-        </div>
-        <el-space wrap>
-            <div v-if="!isEditing">
-                <el-button @click="clickEditButton" type="primary">修改信息</el-button>
-            </div>
-            <div v-else>
-                <el-button @click="finishEditing" type="primary">保存信息</el-button>
-            </div>
-        </el-space>
-        <el-button @click="exitLogin" type="danger">退出登陆</el-button>
-    </el-space>
+  <h1>Personal Info</h1>
+  <el-form :model="formData" label-width="100px">
+    <el-form-item label="头像">
+      <el-avatar :src="imageSrc" :size="100" />
+      <div v-if="isEditing">
+        <input type="file" @change="handleFileChange" accept="image/*" />
+      </div>
+    </el-form-item>
+
+    <el-form-item label="用户名">
+      <el-input v-model="formData.userName" :disabled="!isEditing" style="width: 240px" />
+    </el-form-item>
+
+    <el-form-item label="密码">
+      <el-input v-model="formData.password" :disabled="!isEditing" show-password style="width: 240px" />
+    </el-form-item>
+
+    <el-form-item label="邮箱">
+      <el-input v-model="formData.email" :disabled="!isEditing" style="width: 240px" />
+    </el-form-item>
+
+    <el-form-item label="出生日期">
+      <el-date-picker v-model="formData.birthday" type="date" placeholder="Pick a day" :disabled="!isEditing" />
+    </el-form-item>
+
+    <el-form-item label="手机号">
+      <el-input v-model="formData.phone" :disabled="!isEditing" style="width: 240px" />
+    </el-form-item>
+
+    <el-form-item label="地区">
+      <el-cascader
+        v-model="formData.region"
+        :options="regionOptions"
+        :disabled="!isEditing"
+        :show-all-levels="false"
+        placeholder="选择地区"
+      />
+    </el-form-item>
+
+    <el-form-item>
+      <el-space wrap>
+        <el-button v-if="!isEditing" @click="clickEditButton" type="primary">修改信息</el-button>
+        <el-button v-else @click="finishEditing" type="primary">保存信息</el-button>
+        <el-button @click="exitLogin" type="danger">退出登录</el-button>
+      </el-space>
+    </el-form-item>
+  </el-form>
 </template>
+
 
 <script setup>
 import axios from 'axios';
@@ -80,6 +59,17 @@ const props = defineProps({
 import { useUserStore } from'@/stores/user'
 const userStore = useUserStore()
 
+const formData = ref({
+  userName: '',
+  password: '',
+  email: '',
+  birthday: '',
+  phone: '',
+  region: '',
+  gender: '',
+});
+
+
 const exitLogin = () => {
   ElMessageBox.confirm(
       '确定要退出登录吗?',
@@ -90,10 +80,10 @@ const exitLogin = () => {
         type: 'warning',
       }
     )
-      .then(() => {
-        userStore.logout()
-      })
-      .catch(() => {})
+    .then(() => {
+      userStore.logout()
+    })
+    .catch(() => {})
 };
 
 const clickEditButton = () => {
@@ -105,12 +95,12 @@ const finishEditing = async () => {
     try {
         const response = await axios.put('http://localhost:8080/api/user', {
             userName: currentUserName.value,
-            phone: phone.value,
-            birthday: birthday.value,
-            gender: gender.value,
-            email: email.value,
-            password: password.value,
-            region: region.value[2],
+            phone: formData.value.phone,
+            birthday: formData.value.birthday,
+            gender: formData.value.gender,
+            email: formData.value.email,
+            password: formData.value.password,
+            region: formData.value.region?.[2] || '',  // 取最后一级区域名
         })
         console.log('Success', response);
         ElMessageBox.alert('保存成功', '提示', {
@@ -128,12 +118,6 @@ const finishEditing = async () => {
 
 }
 
-const password = ref('');
-const region = ref('');
-const phone = ref('');
-const birthday = ref('');
-const gender = ref('');
-const email = ref('');
 const userInfo = ref();
 
 const imageSrc = ref('https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png');
@@ -146,13 +130,13 @@ onMounted(async () => {
     try {
         const response = await getUserInfo(currentUserName.value);
         userInfo.value = response;
-        email.value = userInfo.value.email;
-        region.value = userInfo.value.region;
-        phone.value = userInfo.value.phone;
-        birthday.value = userInfo.value.birthday;
-        gender.value = userInfo.value.gender;
-        password.value = userInfo.value.password;
-
+        formData.value.email = userInfo.value.email;
+        formData.value.userName = currentUserName.value;
+        formData.value.region = userInfo.value.region;
+        formData.value.phone = userInfo.value.phone;
+        formData.value.birthday = userInfo.value.birthday;
+        formData.value.gender = userInfo.value.gender;
+        formData.value.password = userInfo.value.password;
     } catch (error) {
         console.error('获取用户信息失败:', error);
     }

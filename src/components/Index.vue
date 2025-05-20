@@ -18,29 +18,61 @@
         <el-menu-item index="2-4-3">item three</el-menu-item>
       </el-sub-menu>
     </el-sub-menu>
-    <el-menu-item index="3" disabled>Info</el-menu-item>
+    <div v-if="userName == 'admin'">
+      <el-sub-menu index="3">
+        <template #title>管理员</template>
+          <el-menu-item index="3-1">用户管理</el-menu-item>
+          <el-menu-item index="3-2">订单管理</el-menu-item>
+      </el-sub-menu>
+    </div>
     <el-menu-item index="4">个人信息</el-menu-item>
   </el-menu>
 
   <div v-if="status == 4">
     <PersonalInfo :passedUserName="userName"></PersonalInfo>
   </div>
+  <div v-else-if="status == '3-1'">
+    <UserManagement></UserManagement>
+  </div>
 
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import PersonalInfo from './views/PersonalInfo.vue'
+import UserManagement from './views/UserManagement.vue'
+import { useRoute, onBeforeRouteUpdate } from 'vue-router'
+const route = useRoute()
 
-const props = defineProps({
-    userName: String,
-});
+// const props = defineProps({
+//     userName: String,
+// });
 
-const status = ref('');
+const userName = ref(route.query.userName || '')
+
+const status = ref(route.query.status || '')
 const activeIndex = ref('1');
+
+// ✅ 使用 watch 监听 route.query 的变化（包括返回）
+watch(() => route.query.status, (newStatus) => {
+  if (newStatus) {
+    status.value = newStatus
+    console.log('Status updated (via watch):', newStatus)
+  }
+})
+
+watch(() => route.query.userName, (newUserName) => {
+  if (newUserName) {
+    userName.value = newUserName
+    console.log('UserName updated (via watch):', newUserName)
+  }
+})
+
+
+
 const handleSelect = (key, keyPath) => {
   console.log(key, keyPath);
-  status.value = keyPath[0];
+  status.value = keyPath.slice(-1); // 获取数组最后一个元素
   console.log('status: ' + status.value);
 }
 

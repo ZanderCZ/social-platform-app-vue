@@ -24,38 +24,42 @@
   </div>
   <div v-else-if="status == 'regist'">
     <el-space wrap direction="vertical">
-      <h1>注册</h1>
-      <div>
-        <span class="demonstration">用户名  </span>
-        <el-input v-model="inputUserName" style="width: 240px" placeholder="请输入用户名" />
-      </div>
-      <div>
-        <span class="demonstration">密码  </span>
+    <h1>注册</h1>
+    <el-form
+      ref="registFormRef"
+      :model="registForm"
+      :rules="rules"
+      label-width="80px"
+    >
+      <el-form-item label="用户名" prop="userName">
+        <el-input v-model="registForm.userName" placeholder="请输入用户名" />
+      </el-form-item>
+
+      <el-form-item label="密码" prop="password">
         <el-input
-            v-model="inputPassword"
-            style="width: 240px"
-            type="password"
-            placeholder="请输入密码"
-            show-password
+          v-model="registForm.password"
+          type="password"
+          placeholder="请输入密码"
+          show-password
         />
-      </div>
-      <div>
-        <span class="demonstration">邮箱  </span>
-        <el-input v-model="inputEmail" style="width: 240px" placeholder="请输入邮箱" />
-        <div class="block">
-          <span class="demonstration">出生日期  </span>
-          <el-date-picker
-            v-model="inputBirthdate"
-            type="date"x
-            placeholder="选择日期"
-            format="YYYY/MM/DD"
-            value-format="YYYY-MM-DD"
-          />
-        </div>
-      </div>
-      <div>
-        <span class="demonstration">性别  </span>
-        <el-select v-model="inputGender" placeholder="性别" style="width: 100px">
+      </el-form-item>
+
+      <el-form-item label="邮箱" prop="email">
+        <el-input v-model="registForm.email" placeholder="请输入邮箱" />
+      </el-form-item>
+
+      <el-form-item label="出生日期" prop="birthdate">
+        <el-date-picker
+          v-model="registForm.birthdate"
+          type="date"
+          placeholder="选择日期"
+          format="YYYY/MM/DD"
+          value-format="YYYY-MM-DD"
+        />
+      </el-form-item>
+
+      <el-form-item label="性别" prop="gender">
+        <el-select v-model="registForm.gender" placeholder="性别">
           <el-option
             v-for="item in genderOptions"
             :key="item.value"
@@ -63,28 +67,35 @@
             :value="item.value"
           />
         </el-select>
-      </div>
-      <div>
-        <span class="demonstration">手机号  </span>
+      </el-form-item>
+
+      <el-form-item label="手机号" prop="phone">
         <el-input
-          v-model="inputPhoneNumber"
-          style="width: 240px"
+          v-model="registForm.phone"
           placeholder="请输入手机号"
           maxlength="11"
-          minlength="11"
           show-word-limit
           clearable
         />
-      </div>
-      <div>
-        <span class="demonstration">地区  </span>
-        <el-cascader v-model="inputRegion" :options="regionOptions" :show-all-levels="false" plcaeholder="选择地区" />
-      </div>
-      <el-space wrap>
-        <el-button type="primary"  @click="back2Login">返回</el-button>
-        <el-button type="primary" :loading="loading" @click="regist">注册</el-button>
-      </el-space>
-    </el-space>
+      </el-form-item>
+
+      <el-form-item label="地区" prop="region">
+        <el-cascader
+          v-model="registForm.region"
+          :options="regionOptions"
+          :show-all-levels="false"
+          placeholder="选择地区"
+        />
+      </el-form-item>
+
+      <el-form-item>
+        <el-space>
+          <el-button @click="back2Login">返回</el-button>
+          <el-button type="primary" :loading="loading" @click="onSubmit">注册</el-button>
+        </el-space>
+      </el-form-item>
+    </el-form>
+  </el-space>
   </div>
 </template>
   
@@ -92,9 +103,70 @@
   import axios from 'axios';
   import { ref } from 'vue';
   import { ElMessage, ElMessageBox } from 'element-plus'
+  import { reactive } from 'vue';
+  import { useRouter } from 'vue-router'
+  const router = useRouter()
 
   import { useUserStore } from '@/stores/user'
   const userStore = useUserStore()
+
+  const registFormRef = ref(null);
+  const registForm = reactive({
+    userName: '',
+    password: '',
+    email: '',
+    birthdate: '',
+    gender: '',
+    phone: '',
+    region: []
+  });
+  const rules = {
+    userName: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+    password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+    email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
+    birthdate: [{ required: true, message: '请选择出生日期', trigger: 'change' }],
+    gender: [{ required: true, message: '请选择性别', trigger: 'change' }],
+    phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
+    region: [{ type: 'array', required: true, message: '请选择地区', trigger: 'change' }]
+  };
+
+  const onSubmit = () => {
+    registFormRef.value.validate(async (valid) => {
+      if (valid) {
+        try {
+          const response = await axios.post('http://localhost:8080/api/user', {
+            userName: registForm.userName,
+            password: registForm.password,
+            email: registForm.email,
+            birthday: registForm.birthdate,
+            gender: registForm.gender,
+            phone: registForm.phone,
+            region: registForm.region[2],
+          });
+          if (response.data.code === 200) {
+            ElMessage.success('注册成功！');
+            status.value = 'login';
+            registForm.userName = ''
+            registForm.password = ''
+            registForm.email = ''
+            registForm.birthdate = ''
+            registForm.gender = ''
+            registForm.phone = ''
+            registForm.region = ''
+          } else if (response.data.code === 506) {
+            ElMessageBox.alert('用户已存在', '提示');
+          } else if (response.data.code === 508) {
+            ElMessageBox.alert('信息不能为空', '提示');
+          }
+        } catch (err) {
+          console.error(err);
+          ElMessage.error('注册失败，请稍后再试');
+        }
+      }
+    });
+  };
+
+
   
   const userName = ref('');
   const password = ref('');
@@ -417,6 +489,12 @@
         console.log("Login success");
         returnedUserName.value = response.data.data.userInfo.userName;
         emit('emit-user-name', returnedUserName.value);
+        router.push({
+          path: '/index',
+          query: {
+            userName: userName.value
+          }
+        })
         userStore.login();
       } else if (response.data.code == 502) {
         ElMessageBox.alert('用户名或密码错误', '提示', {

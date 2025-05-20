@@ -15,12 +15,13 @@
 <template>
   <header>
   </header>
-  <div v-if="!userStore.isLogin">
+  <router-view></router-view>
+  <!-- <div v-if="!userStore.isLogin">
     <Hello @emit-user-name="getUserName" />
   </div>
   <div v-else>
     <Index :userName="userName"/>
-  </div>
+  </div> -->
 </template>
 
 <style scoped>
