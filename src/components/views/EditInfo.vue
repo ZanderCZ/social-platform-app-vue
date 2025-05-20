@@ -45,6 +45,7 @@
         </el-space>
       </el-form-item>
     </el-form>
+    <p>{{ formData }}</p>
   </template>
   
   
@@ -87,6 +88,12 @@
   
   const finishEditing = async () => {
       isEditing.value = false;
+      var submitRegion = ''
+      if (typeof formData.value.region == 'string') {
+        submitRegion = formData.value.region
+      } else {
+        submitRegion = formData.value.region?.[2]
+      }
       try {
           const response = await axios.put('http://localhost:8080/api/user', {
               userName: currentUserName.value,
@@ -95,7 +102,7 @@
               gender: formData.value.gender,
               email: formData.value.email,
               password: formData.value.password,
-              region: formData.value.region?.[2] || '',  // 取最后一级区域名
+              region: submitRegion,  // 取最后一级区域名
           })
           console.log('Success', response);
           ElMessageBox.alert('保存成功', '提示', {

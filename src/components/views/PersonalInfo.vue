@@ -46,6 +46,7 @@
       </el-space>
     </el-form-item>
   </el-form>
+  <p>{{ formData }}</p>
 </template>
 
 
