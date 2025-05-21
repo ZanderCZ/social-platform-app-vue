@@ -16,8 +16,8 @@ const routes = [
     props: true // 允许通过 props 传参
   },
   {
-    path: '/editInfo',
-    name: 'EditInfo',
+    path: '/editUserInfo',
+    name: 'EditUserInfo',
     component: EditInfo,
     props: true
   }

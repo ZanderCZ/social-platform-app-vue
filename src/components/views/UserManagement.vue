@@ -40,7 +40,7 @@ onMounted(async () => {
 
 const editInfoPressed = (userName) => {
     router.push({
-        path: '/editInfo',
+        path: '/editUserInfo',
         query: {
         userName: userName
         }

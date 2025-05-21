@@ -34,6 +34,9 @@
   <div v-else-if="status == '3-1'">
     <UserManagement></UserManagement>
   </div>
+  <div v-else-if="status == '3-2'">
+    <OrderManagement></OrderManagement>
+  </div>
 
 </template>
 
@@ -41,6 +44,7 @@
 import { ref, watch } from 'vue'
 import PersonalInfo from './views/PersonalInfo.vue'
 import UserManagement from './views/UserManagement.vue'
+import OrderManagement from '@/components/views/OrderManagement.vue'
 import { useRoute, onBeforeRouteUpdate } from 'vue-router'
 const route = useRoute()
 
