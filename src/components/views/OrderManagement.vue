@@ -326,8 +326,7 @@ const updateAutoCompletePlaceHolder = () => {
                 <div v-for="(order, index) in paginatedOrders" :key="order.orderId">
                     <el-descriptions
                         class="margin-top"
-                        title="订单信息"
-                        :column="4"
+                        :column="5"
                         size="default"
                         border
                     >
@@ -353,10 +352,19 @@ const updateAutoCompletePlaceHolder = () => {
                         <template #label>
                             <div class="cell-item">
                             <el-icon></el-icon>
-                                总金额
+                            商品名
                             </div>
                         </template>
-                            32.7
+                            goodName
+                        </el-descriptions-item>
+                        <el-descriptions-item>
+                        <template #label>
+                            <div class="cell-item">
+                            <el-icon></el-icon>
+                            商品数量
+                            </div>
+                        </template>
+                            2
                         </el-descriptions-item>
                         <el-descriptions-item>
                         <template #label>
@@ -365,6 +373,15 @@ const updateAutoCompletePlaceHolder = () => {
                             </div>
                         </template>
                         <el-button type="primary" plain>修改</el-button>
+                        </el-descriptions-item>
+                        <el-descriptions-item>
+                        <template #label>
+                            <div class="cell-item">
+                            <el-icon></el-icon>
+                                总金额
+                            </div>
+                        </template>
+                            32.7
                         </el-descriptions-item>
                         <el-descriptions-item>
                         <template #label>
