@@ -42,7 +42,7 @@ const editInfoPressed = (orderName) => {
     router.push({
         path: '/editOrderInfo',
         query: {
-        userName: orderName
+            orderName: orderName
         }
     })
 }
@@ -217,6 +217,19 @@ const searchOrderByCreateTime = () => {
     );
 }
 const search = () => {
+    if (searchKind.value == '') {
+        ElMessageBox.alert('请选择筛选条件', '提示', {
+          confirmButtonText: 'OK',
+          callback: (action) => {},
+          })
+        return
+    } else if (searchKey.value == '') {
+        ElMessageBox.alert('检索不能为空', '提示', {
+          confirmButtonText: 'OK',
+          callback: (action) => {},
+          })
+        return
+    }
     switch (searchKind.value) {
         case 'orderName':
             searchOrderByOrderName(searchKey.value);
@@ -290,7 +303,7 @@ const updateAutoCompletePlaceHolder = () => {
 </script>
 
 <template>
-    <h1>用户管理</h1>
+    <h1>订单管理</h1>
     <el-space wrap direction="vertical">
         <el-space warp direction="horizontal">
             <el-select
@@ -324,8 +337,9 @@ const updateAutoCompletePlaceHolder = () => {
         <div v-else>
             <el-space wrap direction="vertical">
                 <div v-for="(order, index) in paginatedOrders" :key="order.orderId">
+                    <!-- <p>{{ order }}</p> -->
                     <el-descriptions
-                        class="margin-top"
+                        class="order-descriptions"
                         :column="5"
                         size="default"
                         border
@@ -337,7 +351,7 @@ const updateAutoCompletePlaceHolder = () => {
                             订单号
                             </div>
                         </template>
-                            ORD12345678
+                            {{ order.orderName }}
                         </el-descriptions-item>
                         <el-descriptions-item>
                         <template #label>
@@ -346,7 +360,7 @@ const updateAutoCompletePlaceHolder = () => {
                                 买家
                             </div>
                         </template>
-                            admin
+                            {{ order.userName }}
                         </el-descriptions-item>
                         <el-descriptions-item>
                         <template #label>
@@ -355,7 +369,7 @@ const updateAutoCompletePlaceHolder = () => {
                             商品名
                             </div>
                         </template>
-                            goodName
+                            {{ order.goodName }}
                         </el-descriptions-item>
                         <el-descriptions-item>
                         <template #label>
@@ -364,7 +378,7 @@ const updateAutoCompletePlaceHolder = () => {
                             商品数量
                             </div>
                         </template>
-                            2
+                            {{ order.goodQuantity }}
                         </el-descriptions-item>
                         <el-descriptions-item>
                         <template #label>
@@ -372,7 +386,7 @@ const updateAutoCompletePlaceHolder = () => {
                                 修改
                             </div>
                         </template>
-                        <el-button type="primary" plain>修改</el-button>
+                        <el-button @click="editInfoPressed(order.orderName)" type="primary" plain>修改</el-button>
                         </el-descriptions-item>
                         <el-descriptions-item>
                         <template #label>
@@ -381,7 +395,7 @@ const updateAutoCompletePlaceHolder = () => {
                                 总金额
                             </div>
                         </template>
-                            32.7
+                            {{ order.totalAmount }}
                         </el-descriptions-item>
                         <el-descriptions-item>
                         <template #label>
@@ -390,7 +404,23 @@ const updateAutoCompletePlaceHolder = () => {
                                 订单状态
                             </div>
                         </template>
-                        <el-tag size="default">Delivering</el-tag>
+                        <div>
+                            <div v-if="order.orderStatus == 'UnPaid'">
+                                <el-tag size="danger">待付款</el-tag>
+                            </div>
+                            <div v-else-if="order.orderStatus == 'NotDispatched'">
+                                <el-tag size="warning">待发货</el-tag>
+                            </div>
+                            <div v-else-if="order.orderStatus == 'Delivering'">
+                                <el-tag size="default">派送中</el-tag>
+                            </div>
+                            <div v-else-if="order.orderStatus == 'Delivered'">
+                                <el-tag size="success">已送达</el-tag>
+                            </div>
+                            <div v-else-if="order.orderStatus == 'Done'">
+                                <el-tag size="info">已完成</el-tag>
+                            </div>
+                        </div>
                         </el-descriptions-item>
                         <el-descriptions-item>
                         <template #label>
@@ -399,7 +429,14 @@ const updateAutoCompletePlaceHolder = () => {
                                 支付方式
                             </div>
                         </template>
-                            支付宝支付
+                        <div>
+                            <div v-if="order.paymentMethod == 'AliPay'">
+                                <el-tag size="default">支付宝支付</el-tag>
+                            </div>
+                            <div v-else-if="order.paymentMethod == 'WechatPay'">
+                                <el-tag size="success">微信支付</el-tag>
+                            </div>
+                        </div>
                         </el-descriptions-item>
                         <el-descriptions-item>
                         <template #label>
@@ -408,7 +445,7 @@ const updateAutoCompletePlaceHolder = () => {
                                 下单日期
                             </div>
                         </template>
-                            2025-05-20
+                            {{ order.createTime }}
                         </el-descriptions-item>
                         <el-descriptions-item>
                         <template #label>
@@ -433,3 +470,9 @@ const updateAutoCompletePlaceHolder = () => {
     </el-space>
     <!-- <p>{{ userList }}</p> -->
 </template>
+
+<style>
+    .order-descriptions {
+        width: 1000px;
+    }
+</style>

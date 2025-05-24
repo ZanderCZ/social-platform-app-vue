@@ -42,7 +42,7 @@ const editInfoPressed = (userName) => {
     router.push({
         path: '/editUserInfo',
         query: {
-        userName: userName
+            userName: userName
         }
     })
 }
@@ -324,7 +324,7 @@ const updateAutoCompletePlaceHolder = () => {
         <div v-else>
             <el-space wrap direction="vertical">
                 <div v-for="(user, index) in paginatedUsers" :key="user.userId">
-                    <el-descriptions border size="default" :column="3" class="user-descriptions" :label-width="1000">
+                    <el-descriptions border size="default" :column="3" class="user-descriptions" :label-width="200">
                         <el-descriptions-item
                         :rowspan="3"
                         :width="90"
@@ -375,6 +375,6 @@ const updateAutoCompletePlaceHolder = () => {
 
 <style>
 .user-descriptions {
-  width: 700px;
+  width: 1000px;
 }
 </style>

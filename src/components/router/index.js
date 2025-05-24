@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Hello from '@/components/Hello.vue'
 import Index from '@/components/Index.vue'
 import EditInfo from '@/components/views/EditInfo.vue'
+import EditOrderInfo from '@/components/views/EditOrderInfo.vue'
 
 const routes = [
   {
@@ -19,6 +20,12 @@ const routes = [
     path: '/editUserInfo',
     name: 'EditUserInfo',
     component: EditInfo,
+    props: true
+  },
+  {
+    path: '/editOrderInfo',
+    name: 'EditOrderInfo',
+    component: EditOrderInfo,
     props: true
   }
 ]
