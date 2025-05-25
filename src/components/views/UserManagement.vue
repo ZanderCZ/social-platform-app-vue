@@ -217,6 +217,19 @@ const searchUserByRegion = () => {
     );
 }
 const search = () => {
+    if (searchKind.value == '') {
+        ElMessageBox.alert('请选择筛选条件', '提示', {
+          confirmButtonText: 'OK',
+          callback: (action) => {},
+          })
+        return
+    } else if (searchKey.value == '') {
+        ElMessageBox.alert('检索不能为空', '提示', {
+          confirmButtonText: 'OK',
+          callback: (action) => {},
+          })
+        return
+    }
     switch (searchKind.value) {
         case 'userName':
             searchUserByUserName(searchKey.value);
@@ -287,6 +300,15 @@ const updateAutoCompletePlaceHolder = () => {
     }
 }
 
+const checkUserOrders = (userName) => {
+    router.push({
+        path: '/orders4SpecificUser',
+        query: {
+            userName: userName
+        }
+    })
+}
+
 </script>
 
 <template>
@@ -352,7 +374,7 @@ const updateAutoCompletePlaceHolder = () => {
                             <el-button @click="editInfoPressed(user.userName)" type="primary" plain>修改信息</el-button>
                         </el-descriptions-item>
                         <el-descriptions-item label="所有订单">
-                            <el-button type="primary" plain>查看订单</el-button>
+                            <el-button @click="checkUserOrders(user.userName)" type="primary" plain>查看订单</el-button>
                         </el-descriptions-item>
                         <el-descriptions-item label="删除用户">
                             <el-button @click="deleteButtonPressed(user.userName)" type="danger" plain>删除用户</el-button>
