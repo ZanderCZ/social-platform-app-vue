@@ -5,9 +5,9 @@
     mode="horizontal"
     @select="handleSelect"
     >
-    <el-menu-item index="1">Processing Center</el-menu-item>
+    <el-menu-item class="mainPage" index="1">主页</el-menu-item>
     <el-sub-menu index="2">
-      <template #title>Workspace</template>
+      <template #title>商品列表</template>
       <el-menu-item index="2-1">item one</el-menu-item>
       <el-menu-item index="2-2">item two</el-menu-item>
       <el-menu-item index="2-3">item three</el-menu-item>
@@ -23,6 +23,7 @@
         <template #title>管理员</template>
           <el-menu-item index="3-1">用户管理</el-menu-item>
           <el-menu-item index="3-2">订单管理</el-menu-item>
+          <el-menu-item index="3-3">商品管理</el-menu-item>
       </el-sub-menu>
     </div>
     <el-menu-item index="4">个人信息</el-menu-item>
@@ -37,6 +38,10 @@
   <div v-else-if="status == '3-2'">
     <OrderManagement></OrderManagement>
   </div>
+  <div v-else-if="status == '3-3'">
+    <ProductManagement></ProductManagement>
+  </div>
+
 
 </template>
 
@@ -45,6 +50,7 @@ import { ref, watch } from 'vue'
 import PersonalInfo from './views/PersonalInfo.vue'
 import UserManagement from './views/UserManagement.vue'
 import OrderManagement from '@/components/views/OrderManagement.vue'
+import ProductManagement from './views/ProductManagement.vue'
 import { useRoute, onBeforeRouteUpdate } from 'vue-router'
 const route = useRoute()
 
@@ -81,3 +87,9 @@ const handleSelect = (key, keyPath) => {
 }
 
 </script>
+
+<style>
+.mainPage {
+  width: 120px;
+}
+</style>

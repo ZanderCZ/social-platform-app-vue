@@ -4,6 +4,7 @@ import Index from '@/components/Index.vue'
 import EditInfo from '@/components/views/EditInfo.vue'
 import EditOrderInfo from '@/components/views/EditOrderInfo.vue'
 import Orders4SpecificUserVue from '../views/Orders4SpecificUser.vue'
+import CreateProductVue from '../views/CreateProduct.vue'
 
 const routes = [
   {
@@ -34,6 +35,11 @@ const routes = [
     name: 'Orders4SpecificUser',
     component: Orders4SpecificUserVue,
     props: true
+  },
+  {
+    path: '/createProduct',
+    name: 'CreateProduct',
+    component: CreateProductVue
   }
 ]
 
