@@ -20,15 +20,6 @@ const form = reactive({
   productScore: 0,
 })
 
-const getOrderIdByOrderName = async (orderName) => {
-    try {
-        const response = await axios.get('http://localhost:8080/api/order/byOrderName/' + orderName)
-        console.log('Get order successfully', response)
-        return response.data.data.orderId
-    } catch (error) {
-        console.log('Failed to get order by orderName', error)
-    }
-}
 const clickCreateButton = async () => {
     try {
         const response = await axios.post('http://localhost:8080/api/product', {
@@ -38,7 +29,7 @@ const clickCreateButton = async () => {
             productDescription: form.productDescription,
             productCategoryId: form.productCategoryId,
             productIsOnSale: form.productIsOnSale,
-            productCoverImageUrl: form.productName + '.jpg',
+            productCoverImageUrl: form.productName,
             productScore: form.productScore
         })
         console.log('Save successfully', response)

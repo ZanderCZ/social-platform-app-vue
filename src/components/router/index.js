@@ -5,6 +5,7 @@ import EditInfo from '@/components/views/EditInfo.vue'
 import EditOrderInfo from '@/components/views/EditOrderInfo.vue'
 import Orders4SpecificUserVue from '../views/Orders4SpecificUser.vue'
 import CreateProductVue from '../views/CreateProduct.vue'
+import EditProductInfoVue from '../views/EditProductInfo.vue'
 
 const routes = [
   {
@@ -40,6 +41,12 @@ const routes = [
     path: '/createProduct',
     name: 'CreateProduct',
     component: CreateProductVue
+  },
+  {
+    path: '/editProduct',
+    name: 'EditProduct',
+    component: EditProductInfoVue,
+    props: true
   }
 ]
 

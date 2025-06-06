@@ -46,23 +46,23 @@ const editInfoPressed = (orderName) => {
     })
 }
 
-const deleteById = async (orderId) => {
+const deleteById = async (productId) => {
     try {
-        const response = await axios.delete('http://localhost:8080/api/order/' + orderId)
-        console.log('Successfully delete order by orderId', response);
+        const response = await axios.delete('http://localhost:8080/api/product/' + productId)
+        console.log('Successfully delete product by productId', response);
         ElMessage({
             message: '删除成功',
             type: 'success',
         })
     } catch (error) {
-        console.log('Failed to delete order by orderId', error);
+        console.log('Failed to delete product by productId', error);
         throw error;
     }
 }
 
-const deleteButtonPressed = async (orderName) => {
+const deleteButtonPressed = async (productName) => {
   ElMessageBox.confirm(
-    '你确定要删除该订单吗?\n此操作不可恢复',
+    '你确定要删除该商品吗?\n此操作不可恢复',
     '警告',
     {
       confirmButtonText: '确定',
@@ -72,18 +72,18 @@ const deleteButtonPressed = async (orderName) => {
   )
   .then(async () => {
   try {
-    const response = await axios.get('http://localhost:8080/api/order/byOrderName/' + orderName);
-    console.log('Successfully get order by orderName', response);
+    const response = await axios.get('http://localhost:8080/api/product/byProductName/' + productName);
+    console.log('Successfully get product by productName', response);
     
     // 等待删除完成再刷新列表
-    await deleteById(response.data.data.orderId);  
+    await deleteById(response.data.data.productId);  
     await getProductList();  // 这里也加上 await
 
     // 更新用户数量
     await getProductCount();
 
     } catch (error) {
-        console.log('Failed to get user by orderName or delete Order', error);
+        console.log('Failed to get user by productName or delete Product', error);
     }
   })
   .catch(() => {});
@@ -161,31 +161,25 @@ const querySearch = (queryString, cb) => {
 }
 const createFilter = (queryString) => {
   return (product) => {
+    const lowerQuery = queryString.toLowerCase()
     switch (searchKind.value) {
-        case 'productName':
-            return (
-                product.productName.toLowerCase().indexOf(queryString.toLowerCase()) === 0
-            )
-        case 'productPrice':
-            return (
-                product.productPrice.toLowerCase().indexOf(queryString.toLowerCase()) === 0
-            )
-        case 'productStock':
-            return (
-                product.productStock.toLowerCase().indexOf(queryString.toLowerCase()) === 0
-            )
-        case 'productIsOnSale':
-            return (
-                product.productIsOnSale.toLowerCase().indexOf(queryString.toLowerCase()) === 0
-            )
-        case 'productCategory':
-            return (
-                product.productCategory.toLowerCase().indexOf(queryString.toLowerCase()) === 0
-            )
+      case 'productName':
+        return product.productName.toLowerCase().includes(lowerQuery)
+      case 'productPrice':
+        return String(product.productPrice).toLowerCase().includes(lowerQuery)
+      case 'productStock':
+        return String(product.productStock).toLowerCase().includes(lowerQuery)
+      case 'productIsOnSale':
+        const saleStatus = product.productIsOnSale ? '是' : '否'
+        return saleStatus.includes(queryString)
+      case 'productCategory':
+        return String(product.productCategory.categoryName).toLowerCase().includes(lowerQuery)
+      default:
+        return false
     }
-
   }
 }
+
 const handleSelect = (item) => {
   console.log(item)
 }
@@ -298,10 +292,18 @@ const updateAutoCompletePlaceHolder = () => {
             break
     }
 }
-
 const createProduct = () => {
     router.push({
         path: '/createProduct',
+    })
+}
+
+const editButtonPressed = (productName) => {
+    router.push({
+        path: '/editProduct',
+        query: {
+            productName: productName
+        }
     })
 }
 
@@ -343,12 +345,13 @@ const createProduct = () => {
         <div v-else>
             <el-space wrap direction="vertical">
                 <div v-for="(product, index) in paginatedProducts" :key="product.orderId">
-                    <p>{{ product }}</p>
+                    <!-- <p>{{ product }}</p> -->
                     <el-descriptions
                         direction="vertical"
                         border
                         style="margin-top: 20px"
                         :column="5"
+                        class="product-descriptions"
                     >
                         <el-descriptions-item
                         :rowspan="3"
@@ -358,14 +361,25 @@ const createProduct = () => {
                         >
                         <el-image
                             style="width: 100px; height: 100px"
-                            src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png"
-                        />
+                            :src="`http://localhost:8080/uploads/productImage/${product.productCoverImageUrl}.jpg?t=${Date.now()}`"
+                        >
+                        <template #error>
+                            <br><br>
+                            未上传
+                        </template>
+                        </el-image>
                         </el-descriptions-item>
-                        <el-descriptions-item label="商品Id">{{ product.productId }}</el-descriptions-item>
+                        <el-descriptions-item label="商品ID">{{ product.productId }}</el-descriptions-item>
                         <el-descriptions-item label="商品名">{{ product.productName }}</el-descriptions-item>
                         <el-descriptions-item label="商品单价">{{ product.productPrice }}</el-descriptions-item>
-                        <el-descriptions-item label="修改">
-                            <el-button type="primary" plain>修改</el-button>
+                        <el-descriptions-item label="商品评分">
+                            <el-rate
+                                v-model="product.productScore"
+                                disabled
+                                show-score
+                                text-color="#ff9900"
+                                score-template="{value} points"
+                            />
                         </el-descriptions-item>
                         <el-descriptions-item label="商品库存">{{ product.productStock }}</el-descriptions-item>
                         <el-descriptions-item label="商品类别">
@@ -379,8 +393,9 @@ const createProduct = () => {
                                 <el-tag size="default" type="danger">否</el-tag>
                             </div>
                         </el-descriptions-item>
-                        <el-descriptions-item label="删除">
-                            <el-button type="danger" plain>删除</el-button>
+                        <el-descriptions-item label="操作">
+                            <el-button type="primary" plain @click="editButtonPressed(product.productName)">修改</el-button>
+                            <el-button type="danger" plain @click="deleteButtonPressed(product.productName)">删除</el-button>
                         </el-descriptions-item>
                     </el-descriptions>
                 </div>
@@ -398,7 +413,7 @@ const createProduct = () => {
 </template>
 
 <style>
-    .order-descriptions {
+    .product-descriptions {
         width: 1000px;
     }
 </style>

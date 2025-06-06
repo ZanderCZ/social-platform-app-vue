@@ -128,7 +128,7 @@
   
   onMounted(async () => {
       currentUserName.value = passedUserName;
-      imageSrc.value = 'http://localhost:8080/uploads/' + currentUserName.value + '.jpg?t=' + Date.now();
+      imageSrc.value = 'http://localhost:8080/uploads/userImage/' + currentUserName.value + '.jpg?t=' + Date.now();
       console.log('onMounted: imageSrc.value:', imageSrc.value);
   
       try {

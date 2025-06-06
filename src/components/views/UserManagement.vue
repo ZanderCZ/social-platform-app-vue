@@ -350,7 +350,7 @@ const checkUserOrders = (userName) => {
                         <el-descriptions-item
                         :rowspan="3"
                         :width="90"
-                        label="Photo"
+                        label="头像"
                         align="center"
                         >
                             <el-image
