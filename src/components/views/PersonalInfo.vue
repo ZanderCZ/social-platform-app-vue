@@ -136,7 +136,7 @@ const imageSrc = ref('https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55
 
 onMounted(async () => {
     currentUserName.value = props.passedUserName;
-    imageSrc.value = 'http://localhost:8080/uploads/' + currentUserName.value + '.jpg?t=' + Date.now();
+    imageSrc.value = 'http://localhost:8080/uploads/userImage/' + currentUserName.value + '.jpg?t=' + Date.now();
     console.log('onMounted: imageSrc.value:', imageSrc.value);
 
     try {
@@ -166,14 +166,13 @@ const getUserInfo = async (userName) => {
     }
 }
 
-const selectedFile = ref(null);
 const currentUserName = ref(props.passedUserName || '');
 
+const selectedFile = ref(null);
 const handleFileChange = (event) => {
   selectedFile.value = event.target.files[0]; // 获取选中的文件
   submitImage();
 };
-
 const submitImage = async () => {
     if (!selectedFile.value) {
         ElMessageBox.alert('请选择一个图片', '提示', {
@@ -200,7 +199,6 @@ const submitImage = async () => {
         })
     }
 }
-
 const changeImage = async (userName, imageFile) => {
     console.log('Uploading image for user:', userName);
     try {
@@ -213,7 +211,7 @@ const changeImage = async (userName, imageFile) => {
 
         // 3. 发送 POST 请求（注意 headers 要设置 'Content-Type': 'multipart/form-data'）
         const response = await axios.post(
-            'http://localhost:8080/api/upload',
+            'http://localhost:8080/api/upload/userImage',
             formData,
             {
                 headers: {
@@ -221,7 +219,6 @@ const changeImage = async (userName, imageFile) => {
                 },
             }
         );
-
         console.log('Upload success:', response.data);
         return response.data;
     } catch (error) {

@@ -355,7 +355,7 @@ const checkUserOrders = (userName) => {
                         >
                             <el-image
                                 style="width: 50px; height: 50px"
-                                :src="`http://localhost:8080/uploads/${user.userName}.jpg?t=${Date.now()}`"
+                                :src="`http://localhost:8080/uploads/userImage/${user.userName}.jpg?t=${Date.now()}`"
                             >
                                 <template #error>
                                     <div class="image-slot">
