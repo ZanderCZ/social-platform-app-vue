@@ -346,15 +346,15 @@ const checkUserOrders = (userName) => {
         <div v-else>
             <el-space wrap direction="vertical">
                 <div v-for="(user, index) in paginatedUsers" :key="user.userId">
-                    <el-descriptions border size="default" :column="3" class="user-descriptions" :label-width="200">
+                    <el-descriptions border size="default" :column="3" class="user-descriptions" :label-width="100">
                         <el-descriptions-item
                         :rowspan="3"
-                        :width="90"
+                        :width="160"
                         label="头像"
                         align="center"
                         >
                             <el-image
-                                style="width: 50px; height: 50px"
+                                style="width: 100px; height: 100px"
                                 :src="`http://localhost:8080/uploads/userImage/${user.userName}.jpg?t=${Date.now()}`"
                             >
                                 <template #error>
@@ -365,7 +365,15 @@ const checkUserOrders = (userName) => {
                             </el-image>
                         </el-descriptions-item>
                         <el-descriptions-item label="用户名">{{ user.userName }}</el-descriptions-item>
-                        <el-descriptions-item label="性别">{{ user.gender }}</el-descriptions-item>
+                        <div v-if="user.gender == 'male'">
+                            <el-descriptions-item label="性别">男</el-descriptions-item>
+                        </div>
+                        <div v-else-if="user.gender == 'female'">
+                            <el-descriptions-item label="性别">女</el-descriptions-item>
+                        </div>
+                        <div v-else>
+                            <el-descriptions-item label="性别">未知</el-descriptions-item>
+                        </div>
                         <el-descriptions-item label="手机号">{{ user.phone }}</el-descriptions-item>
                         <el-descriptions-item label="地区">{{ user.region }}</el-descriptions-item>
                         <el-descriptions-item label="邮箱">{{ user.email }}</el-descriptions-item>

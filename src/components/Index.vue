@@ -24,6 +24,7 @@
           <el-menu-item index="3-1">用户管理</el-menu-item>
           <el-menu-item index="3-2">订单管理</el-menu-item>
           <el-menu-item index="3-3">商品管理</el-menu-item>
+          <el-menu-item index="3-4">物流管理</el-menu-item>
       </el-sub-menu>
     </div>
     <el-menu-item index="4">个人信息</el-menu-item>
@@ -40,6 +41,9 @@
   </div>
   <div v-else-if="status == '3-3'">
     <ProductManagement></ProductManagement>
+  </div>
+  <div v-else-if="status == '3-4'">
+    
   </div>
 
 
