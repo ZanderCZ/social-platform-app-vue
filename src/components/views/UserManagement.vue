@@ -277,6 +277,7 @@ const searchOptions = [
   },
 ]
 const searchKind = ref('')
+const isAllowSearch = ref(false)
 
 const autocompletePlaceHolder = ref('请选择筛选条件')
 
@@ -297,6 +298,11 @@ const updateAutoCompletePlaceHolder = () => {
         case 'gender':
             autocompletePlaceHolder.value = '请输入性别';
             break
+    }
+    if (searchKind.value == '') {
+        isAllowSearch.value = false
+    } else {
+        isAllowSearch.value = true
     }
 }
 
@@ -336,6 +342,7 @@ const checkUserOrders = (userName) => {
                 class="inline-input w-50"
                 :placeholder="autocompletePlaceHolder"
                 @select="handleSelect"
+                :disabled="!isAllowSearch"
             />
             <el-button @click="search" type="primary">查询</el-button>
             <el-button @click="resetSearch" type="success">重置</el-button>

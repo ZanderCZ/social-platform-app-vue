@@ -43,7 +43,7 @@
     <ProductManagement></ProductManagement>
   </div>
   <div v-else-if="status == '3-4'">
-    
+    <DeliveryManagement></DeliveryManagement>
   </div>
 
 
@@ -55,6 +55,7 @@ import PersonalInfo from './views/PersonalInfo.vue'
 import UserManagement from './views/UserManagement.vue'
 import OrderManagement from '@/components/views/OrderManagement.vue'
 import ProductManagement from './views/ProductManagement.vue'
+import DeliveryManagement from './views/DeliveryManagement.vue'
 import { useRoute, onBeforeRouteUpdate } from 'vue-router'
 const route = useRoute()
 

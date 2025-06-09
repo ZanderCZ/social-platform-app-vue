@@ -204,7 +204,7 @@
   
           // 3. 发送 POST 请求（注意 headers 要设置 'Content-Type': 'multipart/form-data'）
           const response = await axios.post(
-              'http://localhost:8080/api/upload',
+              'http://localhost:8080/api/upload/userImage',
               formData,
               {
                   headers: {
