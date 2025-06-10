@@ -156,6 +156,8 @@ onMounted(async () => {
           placeholder="Pick a date"
           style="width: 40%"
           :disabled="!isEditing"
+          format="YYYY/MM/DD"
+          value-format="YYYY-MM-DD"
         />
     </el-form-item>
     <el-form-item label="支付方式">

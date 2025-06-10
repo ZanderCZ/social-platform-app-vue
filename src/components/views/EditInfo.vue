@@ -21,7 +21,7 @@
       </el-form-item>
   
       <el-form-item label="出生日期">
-        <el-date-picker v-model="formData.birthday" type="date" placeholder="Pick a day" :disabled="!isEditing" />
+        <el-date-picker v-model="formData.birthday" type="date" placeholder="Pick a day" :disabled="!isEditing" format="YYYY/MM/DD" value-format="YYYY-MM-DD"/>
       </el-form-item>
   
       <el-form-item label="手机号">
