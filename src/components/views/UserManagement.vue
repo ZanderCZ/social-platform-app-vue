@@ -299,7 +299,7 @@ const updateAutoCompletePlaceHolder = () => {
             autocompletePlaceHolder.value = '请输入性别';
             break
     }
-    if (searchKind.value == '') {
+    if (searchKind.value == '' || searchKind.value == null) {
         isAllowSearch.value = false
     } else {
         isAllowSearch.value = true
@@ -312,6 +312,12 @@ const checkUserOrders = (userName) => {
         query: {
             userName: userName
         }
+    })
+}
+
+const createUser = () => {
+    router.push({
+        path: '/createUser'
     })
 }
 
@@ -346,6 +352,7 @@ const checkUserOrders = (userName) => {
             />
             <el-button @click="search" type="primary">查询</el-button>
             <el-button @click="resetSearch" type="success">重置</el-button>
+            <el-button @click="createUser" type="warning">新增</el-button>
         </el-space>
         <div v-if="numberOfUsers == 0">
             <h1>没有用户记录</h1>

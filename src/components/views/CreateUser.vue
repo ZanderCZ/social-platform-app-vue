@@ -1,61 +1,9 @@
 <template>
   <div class="auth-container">
     <div class="auth-wrapper" :class="status">
-      <!-- 登录界面 -->
-      <transition name="el-fade-in">
-        <el-card v-if="status == 'login'" class="auth-card login-card">
-          <div class="logo-container">
-            <img alt="Vue logo" class="logo" src="../assets/logo.svg" />
-          </div>
-          <h2 class="auth-title">用户登录</h2>
-          <el-space direction="vertical" alignment="center" :size="20" style="width: 100%">
-            <el-input
-              v-model="userName"
-              style="width: 280px"
-              placeholder="请输入用户名"
-              clearable
-              size="large"
-            >
-              <template #prefix>
-                <el-icon><User /></el-icon>
-              </template>
-            </el-input>
-            <el-input
-              v-model="password"
-              style="width: 280px"
-              type="password"
-              placeholder="请输入密码"
-              show-password
-              size="large"
-            >
-              <template #prefix>
-                <el-icon><Lock /></el-icon>
-              </template>
-            </el-input>
-            <el-space wrap :size="20">
-              <el-button
-                type="primary"
-                :loading="loading"
-                @click="login"
-                size="large"
-                style="width: 120px"
-                >登录</el-button
-              >
-              <el-button
-                type="success"
-                @click="toRegist"
-                size="large"
-                style="width: 120px"
-                >注册</el-button
-              >
-            </el-space>
-          </el-space>
-        </el-card>
-      </transition>
-
       <!-- 注册界面 -->
       <transition name="el-fade-in">
-        <el-card v-if="status == 'regist'" class="auth-card regist-card">
+        <el-card class="auth-card regist-card">
           <h2 class="auth-title">用户注册</h2>
           <el-form
             ref="registFormRef"
@@ -143,14 +91,14 @@
 
             <el-form-item>
               <el-space :size="20">
-                <el-button @click="back2Login" size="large">返回</el-button>
+                <el-button @click="backButtonPressed" size="large">返回</el-button>
                 <el-button
                   type="primary"
                   :loading="loading"
                   @click="onSubmit"
                   size="large"
-                  >注册</el-button
-                >
+                  >注册
+                  </el-button>
               </el-space>
             </el-form-item>
           </el-form>
@@ -192,6 +140,16 @@ const rules = {
   region: [{ type: 'array', required: true, message: '请选择地区', trigger: 'change' }],
 };
 
+const backButtonPressed = () => {
+    router.push({
+        path: '/index',
+        query: {
+        status: '3-1',
+        userName: 'admin'
+        }
+    })
+}
+
 const onSubmit = () => {
   registFormRef.value.validate(async (valid) => {
     if (valid) {
@@ -207,7 +165,6 @@ const onSubmit = () => {
         });
         if (response.data.code === 200) {
           ElMessage.success('注册成功！');
-          status.value = 'login';
           registForm.userName = '';
           registForm.password = '';
           registForm.email = '';
@@ -215,6 +172,7 @@ const onSubmit = () => {
           registForm.gender = '';
           registForm.phone = '';
           registForm.region = '';
+          backButtonPressed()
         } else if (response.data.code === 506) {
           ElMessageBox.alert('用户已存在', '提示');
         } else if (response.data.code === 508) {
@@ -529,59 +487,6 @@ const regist = async () => {
   }
 };
 
-const toRegist = () => {
-  status.value = 'regist';
-};
-
-const back2Login = () => {
-  status.value = 'login';
-};
-
-const login = async () => {
-  loading.value = true;
-  try {
-    const response = await axios.post('http://localhost:8080/api/auth/login', {
-      username: userName.value,
-      password: password.value,
-    });
-    console.log('Success', response);
-    if (response.data.code == 200) {
-      console.log('Login success');
-      returnedUserName.value = response.data.data.userInfo.userName;
-      emit('emit-user-name', returnedUserName.value);
-      router.push({
-        path: '/index',
-        query: {
-          userName: userName.value,
-        },
-      });
-      userStore.login();
-    } else if (response.data.code == 502) {
-      ElMessageBox.alert('用户名或密码错误', '提示', {
-        // if you want to disable its autofocus
-        // autofocus: false,
-        confirmButtonText: 'OK',
-        callback: (action) => {},
-      });
-    } else {
-      ElMessageBox.alert('登陆失败', '提示', {
-        // if you want to disable its autofocus
-        // autofocus: false,
-        confirmButtonText: 'OK',
-        // callback: (action) => {
-        //   ElMessage({
-        //     type: 'info',
-        //     message: `action: ${action}`,
-        //   })
-        // },
-      });
-    }
-  } catch (error) {
-    console.log('Failed', error);
-  } finally {
-    loading.value = false;
-  }
-};
 </script>
 
 <style scoped>

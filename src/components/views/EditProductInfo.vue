@@ -5,6 +5,7 @@ import { reactive } from 'vue'
 import { onMounted } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import axios from 'axios'
+import { Edit, Check, UploadFilled, Back } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const passedProductName = route.query.productName || ''
@@ -156,7 +157,6 @@ const categoryNameChanged = async () => {
     } catch (error) {
         console.log('Failed to get category by categoryName', error);
     }
-
 }
 
 const imageUrl = ref('')
@@ -233,112 +233,285 @@ const clickEditButton = () => {
 }
 </script>
 
-
 <template>
-    <h1>新增商品</h1>
-    <!-- <p>{{ options }}</p> -->
-     <!-- <p>{{ chosedCategoryName }}</p> -->
-    <el-divider/>
-    <!-- <p>{{ firstClassCategories }}</p>
-    <p>{{ secondClassCategories }}</p>
-    <p>{{ thirdClassCategories }}</p> -->
-    <p>{{ form }}</p>
-    <el-form :model="form" label-width="auto" style="max-width: 600px">
-    <el-form-item label="商品名">
-      <el-input style="width: 40%;" v-model="form.productName" :disabled="!isEditing"/>
-    </el-form-item>
-    <el-form-item label="商品图片">
-        <el-space wrap>
-            <el-image style="width: 200px; height: 200px" :src="imageUrl" fit="contain" />
-            <el-upload
-                ref="upload"
-                class="upload-demo"
-                :limit="1"
-                :auto-upload="false"
-                :on-change="handleFileChange"
+  <div class="product-edit-container">
+    <div class="header">
+      <h1 class="title">编辑商品</h1>
+      <el-divider class="divider"/>
+    </div>
+    
+    <div class="form-container">
+      <el-form :model="form" label-width="120px" label-position="top">
+        <div class="form-grid">
+          <div class="form-section">
+            <el-form-item label="商品名称" class="form-item">
+              <el-input 
+                v-model="form.productName" 
+                placeholder="请输入商品名称"
+                clearable
                 :disabled="!isEditing"
-                >
-                <template #trigger>
-                    <el-button type="primary" :disabled="!isEditing">选择图片</el-button>
+              />
+            </el-form-item>
+            
+            <el-form-item label="商品类别" class="form-item">
+              <el-cascader
+                v-model="chosedCategoryName"
+                :options="options"
+                :props="props"
+                @change="categoryNameChanged"
+                placeholder="请选择商品类别"
+                style="width: 100%"
+                :disabled="!isEditing"
+              />
+            </el-form-item>
+            
+            <el-form-item label="商品单价" class="form-item">
+              <el-input-number 
+                v-model="form.productPrice" 
+                :precision="2" 
+                :min="0" 
+                controls-position="right"
+                style="width: 100%"
+                :disabled="!isEditing"
+              >
+                <template #suffix>
+                  <span class="suffix-text">元</span>
                 </template>
-                <el-button class="upload-button" type="success" @click="submitImage" :disabled="!isEditing">
-                    上传
-                </el-button>
-                <template #tip>
-                    <div class="el-upload__tip text-red">
-                    限制1个文件，重复选择将覆盖
-                    </div>
-                </template>
-            </el-upload>
-
-        </el-space>
-    </el-form-item>
-    <el-form-item label="商品库存">
-        <!-- <el-input-number v-model="form.productStock" :min="0" style="width: 28%;">
-            <template #suffix>
-                <span>件</span>
-            </template>
-        </el-input-number> -->
-        <el-slider v-model="form.productStock" show-input :disabled="!isEditing"/>
-    </el-form-item>
-    <el-form-item label="商品单价">
-        <el-input-number v-model="form.productPrice" :precision="2" :min="0" style="width: 40%;" :disabled="!isEditing">
-            <template #suffix>
-                <span>RMB</span>
-            </template>
-        </el-input-number>
-    </el-form-item>
-    <el-form-item label="商品类别">
-        <el-cascader
-            v-model="chosedCategoryName"
-            :options="options"
-            :props="props"
-            @change="categoryNameChanged"
-            :disabled="!isEditing"
-        />
-    </el-form-item>
-    <el-form-item label="是否上架">
-        <el-switch
-            v-model="form.productIsOnSale"
-            class="ml-2"
-            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
-            :disabled="!isEditing"
-        />
-    </el-form-item>
-    <el-form-item label="评分">
-        <el-rate
-            v-model="form.productScore"
-            :texts="['差评', '一般', '还行', '不错', '非常棒']"
-            show-text
-            :disabled="!isEditing"
-        />
-    </el-form-item>
-    <el-form-item label="商品描述">
-        <el-input
-            v-model="form.productDescription"
-            style="width: 300px"
-            :rows="3"
-            type="textarea"
-            placeholder="描述你的商品"
-            :disabled="!isEditing"
-        />
-    </el-form-item>
-
-    <el-form-item>
-      <el-space wrap>
-        <div v-if="!isEditing">
-            <el-button type="success" @click="clickEditButton">修改</el-button>
+              </el-input-number>
+            </el-form-item>
+            
+            <el-form-item label="商品库存" class="form-item">
+              <el-slider 
+                v-model="form.productStock" 
+                show-input 
+                :min="0" 
+                :max="1000"
+                :disabled="!isEditing"
+              />
+            </el-form-item>
+          </div>
+          
+          <div class="form-section">
+            <el-form-item label="商品图片" class="form-item">
+              <div class="image-uploader">
+                <el-image 
+                  :src="imageUrl" 
+                  fit="cover" 
+                  class="product-image"
+                  :preview-src-list="[imageUrl]"
+                />
+                
+                <div class="upload-actions" v-if="isEditing">
+                  <el-upload
+                    ref="upload"
+                    class="upload-demo"
+                    :limit="1"
+                    :auto-upload="false"
+                    :on-change="handleFileChange"
+                  >
+                    <template #trigger>
+                      <el-button type="primary" :icon="UploadFilled">选择图片</el-button>
+                    </template>
+                    <el-button 
+                      type="success" 
+                      class="upload-button" 
+                      @click="submitImage"
+                      :disabled="!selectedFile"
+                    >
+                      上传图片
+                    </el-button>
+                  </el-upload>
+                  <div class="upload-tip">
+                    支持JPG/PNG格式，大小不超过5MB
+                  </div>
+                </div>
+              </div>
+            </el-form-item>
+          </div>
         </div>
-        <div v-else>
-            <el-button type="success" @click="clickUpdateButton(product.productId)">保存</el-button>
+        
+        <div class="form-section">
+          <el-form-item label="商品描述" class="form-item">
+            <el-input
+              v-model="form.productDescription"
+              type="textarea"
+              :rows="4"
+              placeholder="请输入商品详细描述"
+              maxlength="200"
+              show-word-limit
+              :disabled="!isEditing"
+            />
+          </el-form-item>
+          
+          <div class="form-row">
+            <el-form-item label="是否上架" class="form-item">
+              <el-switch
+                v-model="form.productIsOnSale"
+                active-text="立即上架"
+                inactive-text="暂不上架"
+                style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
+                :disabled="!isEditing"
+              />
+            </el-form-item>
+            
+            <el-form-item label="商品评分" class="form-item">
+              <el-rate
+                v-model="form.productScore"
+                :texts="['差评', '一般', '还行', '不错', '非常棒']"
+                show-text
+                :disabled="!isEditing"
+              />
+            </el-form-item>
+          </div>
         </div>
-        <el-button @click="backButtonPressed" type="danger">返回</el-button>
-      </el-space>
-    </el-form-item>
-  </el-form>
-
+        
+        <div class="form-actions">
+          <template v-if="!isEditing">
+            <el-button 
+              type="primary" 
+              size="large" 
+              @click="clickEditButton"
+              class="action-button"
+              :icon="Edit"
+            >
+              编辑商品
+            </el-button>
+          </template>
+          <template v-else>
+            <el-button 
+              type="success" 
+              size="large" 
+              @click="clickUpdateButton(product.productId)"
+              class="action-button"
+              :icon="Check"
+            >
+              保存修改
+            </el-button>
+          </template>
+          <el-button 
+            @click="backButtonPressed" 
+            size="large"
+            class="action-button"
+            :icon="Back"
+          >
+            返回
+          </el-button>
+        </div>
+      </el-form>
+    </div>
+  </div>
 </template>
 
 <style scoped>
+.product-edit-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+}
 
+.header {
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 500;
+  color: #303133;
+  margin-bottom: 8px;
+}
+
+.divider {
+  margin: 16px 0;
+}
+
+.form-container {
+  padding: 0 20px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-bottom: 24px;
+}
+
+.form-section {
+  margin-bottom: 20px;
+}
+
+.form-item {
+  margin-bottom: 24px;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+
+.image-uploader {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.product-image {
+  width: 100%;
+  height: 300px;
+  border-radius: 4px;
+  border: 1px dashed #dcdfe6;
+  object-fit: contain;
+  background-color: #f5f7fa;
+}
+
+.upload-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.upload-button {
+  width: 100%;
+}
+
+.upload-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 8px;
+}
+
+.suffix-text {
+  color: #909399;
+  margin-left: 5px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 40px;
+}
+
+.action-button {
+  width: 180px;
+}
+
+@media (max-width: 768px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .form-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  
+  .product-edit-container {
+    padding: 16px;
+  }
+}
 </style>

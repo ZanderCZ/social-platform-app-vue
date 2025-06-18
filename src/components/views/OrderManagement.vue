@@ -9,6 +9,7 @@ const numberOfOrders = ref(0);
 const orderList = ref([]);         // 原始用户列表
 const filteredOrderList = ref([]); // 当前用于渲染的用户列表
 const currentPage = ref(1);
+const isAllowSearch = ref(false)
 
 const getOrderCount = async () => {
     // 获取用户数量
@@ -84,13 +85,13 @@ const deleteButtonPressed = async (orderName) => {
     await getOrderCount();
 
     } catch (error) {
-        console.log('Failed to get user by orderName or delete Order', error);
+        console.log('Failed to get order by orderName or delete Order', error);
     }
   })
   .catch(() => {});
 }
 
-const pageSize = 3;
+const pageSize = 5;
 const paginatedOrders = computed(() => {
   const start = (currentPage.value - 1) * pageSize;
   const end = start + pageSize;
@@ -184,7 +185,6 @@ const createFilter = (queryString) => {
                 order.createTime.toLowerCase().indexOf(queryString.toLowerCase()) === 0
             )
     }
-
   }
 }
 const handleSelect = (item) => {
@@ -298,6 +298,17 @@ const updateAutoCompletePlaceHolder = () => {
             autocompletePlaceHolder.value = '请输入下单日期';
             break
     }
+    if (searchKind.value == '') {
+        isAllowSearch.value = false
+    } else {
+        isAllowSearch.value = true
+    }
+}
+
+const createOrder = () => {
+    router.push({
+        path: '/createOrder'
+    })
 }
 
 </script>
@@ -327,9 +338,11 @@ const updateAutoCompletePlaceHolder = () => {
                 class="inline-input w-50"
                 :placeholder="autocompletePlaceHolder"
                 @select="handleSelect"
+                :disabled="!isAllowSearch"
             />
             <el-button @click="search" type="primary">查询</el-button>
             <el-button @click="resetSearch" type="success">重置</el-button>
+            <el-button @click="createOrder()" type="warning">新增</el-button>
         </el-space>
         <div v-if="numberOfOrders == 0">
             <h1>没有订单记录</h1>
@@ -460,7 +473,7 @@ const updateAutoCompletePlaceHolder = () => {
                 <!-- <el-pagination v-model="currentPage" layout="prev, pager, next" :total="numberOfUsers*10/5" /> -->
                 <el-pagination
                     v-model:current-page="currentPage"
-                    :page-size="3"
+                    :page-size="pageSize"
                     layout="prev, pager, next"
                     :total="filteredOrderList.length"
                     background

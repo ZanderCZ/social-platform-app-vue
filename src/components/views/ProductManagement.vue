@@ -9,6 +9,7 @@ const numberOfProducts = ref(0);
 const productList = ref([]);         // 原始用户列表
 const filteredProductList = ref([]); // 当前用于渲染的用户列表
 const currentPage = ref(1);
+const isAllowSearch = ref(false)
 
 const getProductCount = async () => {
     try {
@@ -291,6 +292,11 @@ const updateAutoCompletePlaceHolder = () => {
             autocompletePlaceHolder.value = '请输入是否上架';
             break
     }
+    if (searchKind.value == '') {
+        isAllowSearch.value = false
+    } else {
+        isAllowSearch.value = true
+    }
 }
 const createProduct = () => {
     router.push({
@@ -334,6 +340,7 @@ const editButtonPressed = (productName) => {
                 class="inline-input w-50"
                 :placeholder="autocompletePlaceHolder"
                 @select="handleSelect"
+                :disabled="!isAllowSearch"
             />
             <el-button @click="search" type="primary">查询</el-button>
             <el-button @click="resetSearch" type="success">重置</el-button>

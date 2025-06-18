@@ -25,6 +25,7 @@
           <el-menu-item index="3-2">订单管理</el-menu-item>
           <el-menu-item index="3-3">商品管理</el-menu-item>
           <el-menu-item index="3-4">物流管理</el-menu-item>
+          <el-menu-item index="3-5">商品分类管理</el-menu-item>
       </el-sub-menu>
     </div>
     <el-menu-item index="4">个人信息</el-menu-item>
@@ -45,7 +46,9 @@
   <div v-else-if="status == '3-4'">
     <DeliveryManagement></DeliveryManagement>
   </div>
-
+  <div>
+    <CategoryManagement></CategoryManagement>
+  </div>
 
 </template>
 
@@ -56,6 +59,7 @@ import UserManagement from './views/UserManagement.vue'
 import OrderManagement from '@/components/views/OrderManagement.vue'
 import ProductManagement from './views/ProductManagement.vue'
 import DeliveryManagement from './views/DeliveryManagement.vue'
+import CategoryManagement from './views/CategoryManagement.vue'
 import { useRoute, onBeforeRouteUpdate } from 'vue-router'
 const route = useRoute()
 

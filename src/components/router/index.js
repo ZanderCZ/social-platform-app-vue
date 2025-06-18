@@ -7,6 +7,8 @@ import Orders4SpecificUserVue from '../views/Orders4SpecificUser.vue'
 import CreateProductVue from '../views/CreateProduct.vue'
 import EditProductInfoVue from '../views/EditProductInfo.vue'
 import EditDeliveryInfoVue from '../views/EditDeliveryInfo.vue'
+import CreateUser from '../views/CreateUser.vue'
+import CreateOrder from '../views/CreateOrder.vue'
 
 const routes = [
   {
@@ -54,6 +56,16 @@ const routes = [
     name: 'EditDelivery',
     component: EditDeliveryInfoVue,
     props: true
+  },
+  {
+    path: '/createUser',
+    name: 'CreateUser',
+    component: CreateUser
+  },
+  {
+    path: '/createOrder',
+    name: 'CreateOrder',
+    component: CreateOrder
   }
 ]
 

@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { reactive } from 'vue'
 import { onMounted } from 'vue'
-import { ElMessageBox } from 'element-plus'
+import { ElMessageBox, ElMessage } from 'element-plus'
 import axios from 'axios'
 import { Edit, Check, Back } from '@element-plus/icons-vue'
 
@@ -33,14 +33,15 @@ const getOrderIdByOrderName = async (orderName) => {
     }
 }
 
-const clickSaveButton = async () => {
+const clickCreateButton = async () => {
     try {
         const orderId = await getOrderIdByOrderName(passedOrderName)
-        const response = await axios.put('http://localhost:8080/api/order/' + orderId, {
+        const response = await axios.post('http://localhost:8080/api/order', {
+            userName: form.userName,
             totalAmount: form.totalAmount,
-            orderStatus: form.orderStatus,
+            orderStatus: 'Unpaid',
             paymentMethod: form.paymentMethod,
-            createTime: form.createTime,
+            createTime: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }),
             goodName: form.goodName,
             goodQuantity: form.goodCount
         })
@@ -80,27 +81,35 @@ const backButtonPressed = () => {
 }
 
 onMounted(async () => {
-    try {
-        const response = await axios.get('http://localhost:8080/api/order/byOrderName/' + passedOrderName)
-        console.log('Get order info successfully', response)
-        const orderInfo = response.data.data
-        form.createTime = orderInfo.createTime
-        form.goodName = orderInfo.goodName
-        form.goodCount = orderInfo.goodQuantity
-        form.orderStatus = orderInfo.orderStatus
-        form.paymentMethod = orderInfo.paymentMethod
-        form.totalAmount = orderInfo.totalAmount
-    } catch (error) {
-        console.log('Failed to get order info', error)
-    }
+
 })
+
+const isAllowProductQuantityIncrease = ref(true)
+const updateTotalAmount = async () => {
+    var productName = form.goodName
+    var productPrice = 0.0
+    var productStock = 0
+    try {
+        const response = await axios.get("http://localhost:8080/api/product/byProductName/" + productName)
+        console.log(response);
+        productPrice = response.data.data.productPrice
+        productStock = response.data.data.productStock
+        if (form.goodCount >= productStock) {
+            form.goodCount = productStock
+            ElMessage.error('商品库存不足')
+        }
+        form.totalAmount = form.goodCount * productPrice
+    } catch (error) {
+        console.log('Failed to get product by productName', error);
+    }
+}
 </script>
 
 <template>
+    <div>{{ form.totalAmount }}</div>
   <div class="order-edit-container">
     <div class="header">
-      <h1 class="title">订单详情</h1>
-      <div class="order-number">订单编号: {{ passedOrderName }}</div>
+      <h1 class="title">创建订单</h1>
       <el-divider class="divider"/>
     </div>
     
@@ -108,10 +117,10 @@ onMounted(async () => {
       <el-form :model="form" label-width="120px" label-position="top">
         <div class="form-grid">
           <div class="form-section">
-            <el-form-item label="商品名称" class="form-item">
+            <el-form-item label="买家名称" class="form-item">
               <el-input 
-                v-model="form.goodName" 
-                placeholder="请输入商品名称"
+                v-model="form.userName" 
+                placeholder="请输入买家名称"
                 clearable
                 :disabled="!isEditing"
               />
@@ -120,10 +129,11 @@ onMounted(async () => {
             <el-form-item label="商品数量" class="form-item">
               <el-input-number 
                 v-model="form.goodCount" 
-                :min="0" 
+                :min="1" 
                 controls-position="right"
                 style="width: 100%"
-                :disabled="!isEditing"
+                :disabled="!isEditing || !isAllowProductQuantityIncrease"
+                @change="updateTotalAmount()"
               >
                 <template #suffix>
                   <span class="suffix-text">件</span>
@@ -148,10 +158,17 @@ onMounted(async () => {
           </div>
           
           <div class="form-section">
-            <el-form-item label="订单状态" class="form-item">
-              <el-select
+            <el-form-item label="商品名称" class="form-item">
+                <el-input 
+                    v-model="form.goodName" 
+                    placeholder="请输入商品名称"
+                    clearable
+                    :disabled="!isEditing"
+                    @change="updateTotalAmount()"
+                />
+              <!-- <el-select
                 v-model="form.orderStatus"
-                placeholder="请选择订单状态"
+                placeholder="请输入商品名称"
                 style="width: 100%"
                 :disabled="!isEditing"
               >
@@ -162,7 +179,7 @@ onMounted(async () => {
                   :value="item.value"
                   :style="{ color: item.color }"
                 />
-              </el-select>
+              </el-select> -->
             </el-form-item>
             
             <el-form-item label="创建日期" class="form-item">
@@ -202,7 +219,7 @@ onMounted(async () => {
             <el-button 
               type="success" 
               size="large" 
-              @click="clickSaveButton"
+              @click="clickCreateButton"
               class="action-button"
               :icon="Check"
             >
