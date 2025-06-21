@@ -19,10 +19,6 @@ const form = reactive({
   createTime: '',
 })
 
-const clickEditButton = () => {
-    isEditing.value = !isEditing.value
-}
-
 const getOrderIdByOrderName = async (orderName) => {
     try {
         const response = await axios.get('http://localhost:8080/api/order/byOrderName/' + orderName)
@@ -39,7 +35,7 @@ const clickCreateButton = async () => {
         const response = await axios.post('http://localhost:8080/api/order', {
             userName: form.userName,
             totalAmount: form.totalAmount,
-            orderStatus: 'Unpaid',
+            orderStatus: 'UnPaid',
             paymentMethod: form.paymentMethod,
             createTime: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }),
             goodName: form.goodName,
@@ -60,14 +56,6 @@ const clickCreateButton = async () => {
 
 const passedOrderName = route.query.orderName || ''
 
-const statusOptions = [
-  { value: 'UnPaid', label: '待付款', color: '#F56C6C' },
-  { value: 'NotDispatched', label: '待发货', color: '#E6A23C' },
-  { value: 'Delivering', label: '派送中', color: '#409EFF' },
-  { value: 'Delivered', label: '已送达', color: '#67C23A' },
-  { value: 'Done', label: '已完成', color: '#909399' },
-]
-
 const isEditing = ref(false)
 
 const backButtonPressed = () => {
@@ -81,14 +69,17 @@ const backButtonPressed = () => {
 }
 
 onMounted(async () => {
-
+    
 })
 
-const isAllowProductQuantityIncrease = ref(true)
+const isAllowProductQuantityIncrease = ref(false)
 const updateTotalAmount = async () => {
     var productName = form.goodName
     var productPrice = 0.0
     var productStock = 0
+    if (productName != '') {
+        isAllowProductQuantityIncrease.value = true
+    }
     try {
         const response = await axios.get("http://localhost:8080/api/product/byProductName/" + productName)
         console.log(response);
@@ -122,7 +113,6 @@ const updateTotalAmount = async () => {
                 v-model="form.userName" 
                 placeholder="请输入买家名称"
                 clearable
-                :disabled="!isEditing"
               />
             </el-form-item>
             
@@ -132,7 +122,7 @@ const updateTotalAmount = async () => {
                 :min="1" 
                 controls-position="right"
                 style="width: 100%"
-                :disabled="!isEditing || !isAllowProductQuantityIncrease"
+                :disabled="!isAllowProductQuantityIncrease"
                 @change="updateTotalAmount()"
               >
                 <template #suffix>
@@ -148,7 +138,7 @@ const updateTotalAmount = async () => {
                 :min="0" 
                 controls-position="right"
                 style="width: 100%"
-                :disabled="!isEditing"
+                disabled
               >
                 <template #suffix>
                   <span class="suffix-text">元</span>
@@ -163,7 +153,6 @@ const updateTotalAmount = async () => {
                     v-model="form.goodName" 
                     placeholder="请输入商品名称"
                     clearable
-                    :disabled="!isEditing"
                     @change="updateTotalAmount()"
                 />
               <!-- <el-select
@@ -182,20 +171,19 @@ const updateTotalAmount = async () => {
               </el-select> -->
             </el-form-item>
             
-            <el-form-item label="创建日期" class="form-item">
+            <!-- <el-form-item label="创建日期" class="form-item">
               <el-date-picker
                 v-model="form.createTime"
                 type="date"
                 placeholder="选择日期"
                 style="width: 100%"
-                :disabled="!isEditing"
                 format="YYYY/MM/DD"
                 value-format="YYYY-MM-DD"
               />
-            </el-form-item>
+            </el-form-item> -->
             
             <el-form-item label="支付方式" class="form-item">
-              <el-radio-group v-model="form.paymentMethod" :disabled="!isEditing">
+              <el-radio-group v-model="form.paymentMethod">
                 <el-radio-button value="WechatPay">微信支付</el-radio-button>
                 <el-radio-button value="AliPay">支付宝支付</el-radio-button>
               </el-radio-group>
@@ -204,30 +192,17 @@ const updateTotalAmount = async () => {
         </div>
         
         <div class="form-actions">
-          <template v-if="!isEditing">
-            <el-button 
-              type="primary" 
-              size="large" 
-              @click="clickEditButton"
-              class="action-button"
-              :icon="Edit"
-            >
-              编辑订单
-            </el-button>
-          </template>
-          <template v-else>
             <el-button 
               type="success" 
               size="large" 
-              @click="clickCreateButton"
+              @click="clickCreateButton()"
               class="action-button"
               :icon="Check"
             >
               保存修改
             </el-button>
-          </template>
           <el-button 
-            @click="backButtonPressed" 
+            @click="backButtonPressed()" 
             size="large"
             class="action-button"
             :icon="Back"

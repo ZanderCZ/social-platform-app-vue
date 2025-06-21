@@ -398,6 +398,16 @@ const checkOrderInfo = (order) => {
                         </el-image>
                         </el-descriptions-item>
                         <el-descriptions-item label="物流号">{{ delivery.deliveryId }}</el-descriptions-item>
+                        <el-descriptions-item label="物流公司">
+                            <div>
+                                <div v-if="delivery.expressCompany == 'upfg'">
+                                    <el-tag size="default">顺丰物流</el-tag>
+                                </div>
+                                <div v-else-if="order.paymentMethod == 'jyds'">
+                                    <el-tag size="success">京东物流</el-tag>
+                                </div>
+                            </div>
+                        </el-descriptions-item>
                         <el-descriptions-item label="承运订单">
                             {{ delivery.order.orderName }}
                             <el-button @click="checkOrderInfo(delivery.order)" type="primary" plain size="small">

@@ -9,6 +9,7 @@ import EditProductInfoVue from '../views/EditProductInfo.vue'
 import EditDeliveryInfoVue from '../views/EditDeliveryInfo.vue'
 import CreateUser from '../views/CreateUser.vue'
 import CreateOrder from '../views/CreateOrder.vue'
+import CreateDelivery from '../views/CreateDelivery.vue'
 
 const routes = [
   {
@@ -66,6 +67,11 @@ const routes = [
     path: '/createOrder',
     name: 'CreateOrder',
     component: CreateOrder
+  },
+  {
+    path: '/createDelivery',
+    name: 'CreateDelivery',
+    component: CreateDelivery
   }
 ]
 

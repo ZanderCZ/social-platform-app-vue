@@ -31,7 +31,7 @@
     <el-menu-item index="4">个人信息</el-menu-item>
   </el-menu>
 
-  <div v-if="status == 4">
+  <div v-if="status == '4'">
     <PersonalInfo :passedUserName="userName"></PersonalInfo>
   </div>
   <div v-else-if="status == '3-1'">
@@ -46,8 +46,11 @@
   <div v-else-if="status == '3-4'">
     <DeliveryManagement></DeliveryManagement>
   </div>
-  <div>
+  <div v-else-if="status == '3-5'">
     <CategoryManagement></CategoryManagement>
+  </div>
+  <div v-else-if="status == '1'">
+    <MainPage></MainPage>
   </div>
 
 </template>
@@ -60,6 +63,7 @@ import OrderManagement from '@/components/views/OrderManagement.vue'
 import ProductManagement from './views/ProductManagement.vue'
 import DeliveryManagement from './views/DeliveryManagement.vue'
 import CategoryManagement from './views/CategoryManagement.vue'
+import MainPage from './views/MainPage.vue'
 import { useRoute, onBeforeRouteUpdate } from 'vue-router'
 const route = useRoute()
 

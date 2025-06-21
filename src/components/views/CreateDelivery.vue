@@ -121,84 +121,69 @@ const setCompanyOptions = async () => {
 
 
 <template>
-  <div style="max-width: 800px; margin: auto; padding: 24px">
-    <el-card shadow="hover">
-      <template #header>
-        <div style="font-size: 20px; font-weight: bold; text-align: center">
-          修改物流信息
-        </div>
-      </template>
-
-      <div style="margin-bottom: 12px; font-size: 16px">
-        <strong>物流号：</strong>{{ passedDeliveryId }}
-      </div>
-
-      <el-form :model="form" label-width="100px" label-position="top">
-        <el-form-item label="订单号">
-          <el-input v-model="form.orderName" disabled />
-        </el-form-item>
-
-        <el-form-item label="承运公司">
-          <el-select
-            v-model="form.expressComany"
-            placeholder="请选择承运公司"
-            style="width: 100%"
-            :disabled="!isEditing"
-          >
+    <h1>修改物流信息</h1>
+    <h3> 物流号：{{ passedDeliveryId }}</h3>
+    <el-form :model="form" label-width="auto" style="max-width: 600px">
+    <el-form-item label="订单号">
+        {{ form.orderName }}
+    </el-form-item>
+    <el-form-item label="承运公司">
+        <el-select
+        v-model="form.orderStatus"
+        placeholder="Select"
+        size="default"
+        style="width: 40%"
+        :disabled="!isEditing"
+        >
             <el-option
-              v-for="item in companyOptions"
-              :key="item"
-              :label="item"
-              :value="item"
+                v-for="item in options"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
             />
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="订单状态">
-          <el-select
-            v-model="form.orderStatus"
-            placeholder="请选择订单状态"
-            style="width: 100%"
-            :disabled="!isEditing"
-          >
+        </el-select>
+    </el-form-item>
+    <el-form-item label="订单状态">
+        <el-select
+        v-model="form.orderStatus"
+        placeholder="Select"
+        size="default"
+        style="width: 40%"
+        :disabled="!isEditing"
+        >
             <el-option
-              v-for="item in options"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
+                v-for="item in options"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
             />
-          </el-select>
-        </el-form-item>
+        </el-select>
+    </el-form-item>
+    <el-form-item label="发货日期">
+        <el-date-picker
+          v-model="form.shippedTime"
+          type="date"
+          placeholder="选择时间"
+          style="width: 40%"
+          :disabled="!isEditing"
+        />
+    </el-form-item>
+    <el-form-item label="签收日期">
+        <el-date-picker
+          v-model="form.deliveredTime"
+          type="date"
+          placeholder="选择时间"
+          style="width: 40%"
+          :disabled="!isEditing"
+        />
+    </el-form-item>
+    <el-form-item>
+      <el-space wrap>
+        <div v-if="!isEditing"><el-button type="primary" @click="clickEditButton">修改</el-button></div> 
+        <div v-else><el-button type="primary" @click="clickSaveButton">保存</el-button></div>
+        <el-button @click="backButtonPressed" type="danger">返回</el-button>
+      </el-space>
+    </el-form-item>
+  </el-form>
 
-        <el-form-item label="发货日期">
-          <el-date-picker
-            v-model="form.shippedTime"
-            type="date"
-            placeholder="请选择发货日期"
-            style="width: 100%"
-            :disabled="!isEditing"
-          />
-        </el-form-item>
-
-        <el-form-item label="签收日期">
-          <el-date-picker
-            v-model="form.deliveredTime"
-            type="date"
-            placeholder="请选择签收日期"
-            style="width: 100%"
-            :disabled="!isEditing"
-          />
-        </el-form-item>
-
-        <el-form-item>
-          <div style="display: flex; justify-content: center; gap: 12px">
-            <el-button type="primary" @click="isEditing ? clickSaveButton() : clickEditButton()">
-              {{ isEditing ? '保存' : '修改' }}
-            </el-button>
-            <el-button type="danger" @click="backButtonPressed">返回</el-button>
-          </div>
-        </el-form-item>
-      </el-form>
-    </el-card>
-  </div>
 </template>

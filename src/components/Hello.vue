@@ -553,6 +553,7 @@ const login = async () => {
         path: '/index',
         query: {
           userName: userName.value,
+          status: '1'
         },
       });
       userStore.login();
