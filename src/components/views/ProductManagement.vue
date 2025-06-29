@@ -6,10 +6,36 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 
 const numberOfProducts = ref(0);
-const productList = ref([]);         // 原始用户列表
-const filteredProductList = ref([]); // 当前用于渲染的用户列表
+const productList = ref([]);         // 原始商品列表
+const filteredProductList = ref([]); // 当前用于渲染的商品列表
 const currentPage = ref(1);
-const isAllowSearch = ref(false)
+
+// 多条件搜索字段
+const searchConditions = ref({
+    productName: '',
+    productPriceMin: '',
+    productPriceMax: '',
+    productStockMin: '',
+    productStockMax: '',
+    productIsOnSale: '',
+    productCategory: ''
+});
+
+// 自动提示选项
+const productNameSuggestions = ref([]);
+
+// 商品类别选项
+const categoryOptions = ref([]);
+
+// 级联选择器配置
+const cascaderProps = {
+  value: 'categoryName',
+  label: 'categoryName',
+  children: 'children',
+  checkStrictly: false, // 只能选择叶子节点
+  emitPath: false, // 只返回选中节点的值，不返回完整路径
+  expandTrigger: 'hover' // 鼠标悬停展开子菜单
+};
 
 const getProductCount = async () => {
     try {
@@ -27,15 +53,89 @@ const getProductList = async () => {
     const response = await axios.get('http://localhost:8080/api/product/all')
     productList.value = response.data.data;
     filteredProductList.value = [...productList.value]; // 拷贝初始数据用于渲染
+    
+    // 初始化自动提示选项
+    updateSuggestions();
   } catch (error) {
     console.log('Failed', error);
     throw error;
   }
 }
 
+// 获取所有商品类别
+const getAllCategories = async () => {
+  try {
+    const response = await axios.get('http://localhost:8080/api/category/all')
+    console.log('Get all categories success', response);
+    
+    // 将扁平数据转换为树形结构
+    const flatCategories = response.data.data;
+    categoryOptions.value = buildCategoryTree(flatCategories);
+  } catch (error) {
+    console.log('Failed to get categories', error);
+    throw error;
+  }
+}
+
+// 构建分类树形结构
+const buildCategoryTree = (flatCategories) => {
+  const categoryMap = new Map();
+  const rootCategories = [];
+
+  // 首先创建所有分类的映射
+  flatCategories.forEach(category => {
+    categoryMap.set(category.categoryId, {
+      ...category,
+      children: []
+    });
+  });
+
+  // 构建父子关系
+  flatCategories.forEach(category => {
+    const node = categoryMap.get(category.categoryId);
+    
+    if (category.categoryParentId === 0) {
+      // 根分类
+      rootCategories.push(node);
+    } else {
+      // 子分类
+      const parent = categoryMap.get(category.categoryParentId);
+      if (parent) {
+        parent.children.push(node);
+      }
+    }
+  });
+
+  return rootCategories;
+}
+
+// 更新自动提示选项
+const updateSuggestions = () => {
+    // 商品名提示
+    const uniqueProductNames = [...new Set(productList.value.map(product => product.productName))];
+    productNameSuggestions.value = uniqueProductNames.map(name => ({ value: name }));
+}
+
+// 过滤提示选项
+const filterSuggestions = (queryString, suggestions) => {
+    if (queryString === '') {
+        return suggestions;
+    }
+    return suggestions.filter(item => 
+        item.value.toLowerCase().includes(queryString.toLowerCase())
+    );
+}
+
+// 商品名自动提示
+const queryProductName = (queryString, cb) => {
+    const results = filterSuggestions(queryString, productNameSuggestions.value);
+    cb(results);
+}
+
 onMounted(async () => {
     getProductCount();
     getProductList();
+    getAllCategories();
 })
 
 const editInfoPressed = (orderName) => {
@@ -97,207 +197,104 @@ const paginatedProducts = computed(() => {
   return filteredProductList.value.slice(start, end);
 });
 
-var searchKey = ref('')
-
-const querySearch = (queryString, cb) => {
-    var results = queryString
-        ? productList.value.filter(createFilter(queryString)).map(product => ({
-            value: product.productName
-        }))
-        : productList.value.map(product => ({
-            value: product.productName
-        }));
-    switch (searchKind.value) {
-        case 'productName':
-            results = queryString
-                ? productList.value.filter(createFilter(queryString)).map(product => ({
-                    value: product.productName
-                }))
-                : productList.value.map(product => ({
-                    value: product.productName
-                }))
-            cb(results)
-            break
-        case 'productPrice':
-            results = queryString
-                ? productList.value.filter(createFilter(queryString)).map(product => ({
-                    value: product.productPrice
-                }))
-                : productList.value.map(product => ({
-                    value: product.productPrice
-                }))
-            cb(results)
-            break
-        case 'productStock':
-            results = queryString
-                ? productList.value.filter(createFilter(queryString)).map(product => ({
-                    value: product.productStock
-                }))
-                : productList.value.map(product => ({
-                    value: product.productStock
-                }))
-            cb(results)
-            break
-        case 'productIsOnSale':
-            results = queryString
-                ? productList.value.filter(createFilter(queryString)).map(product => ({
-                    value: product.productIsOnSale
-                }))
-                : productList.value.map(product => ({
-                    value: product.productIsOnSale
-                }))
-            cb(results)
-            break
-        case 'productCategory':
-            results = queryString
-                ? productList.value.filter(createFilter(queryString)).map(product => ({
-                    value: product.productCategory
-                }))
-                : productList.value.map(product => ({
-                    value: product.productCategory
-                }))
-            cb(results)
-            break
-    }
-}
-const createFilter = (queryString) => {
-  return (product) => {
-    const lowerQuery = queryString.toLowerCase()
-    switch (searchKind.value) {
-      case 'productName':
-        return product.productName.toLowerCase().includes(lowerQuery)
-      case 'productPrice':
-        return String(product.productPrice).toLowerCase().includes(lowerQuery)
-      case 'productStock':
-        return String(product.productStock).toLowerCase().includes(lowerQuery)
-      case 'productIsOnSale':
-        const saleStatus = product.productIsOnSale ? '是' : '否'
-        return saleStatus.includes(queryString)
-      case 'productCategory':
-        return String(product.productCategory.categoryName).toLowerCase().includes(lowerQuery)
-      default:
-        return false
-    }
-  }
-}
-
-const handleSelect = (item) => {
-  console.log(item)
-}
-
-const searchProductByProductName = () => {
-  filteredProductList.value = productList.value.filter(
-    product => product.productName === searchKey.value
-  );
-}
-const searchProductByProductPrice = () => {
-    filteredProductList.value = productList.value.filter(
-        product => product.productPrice === searchKey.value
-    );
-}
-const searchProductByProductStock = () => {
-    filteredProductList.value = productList.value.filter(
-        product => product.productStock === searchKey.value
-    );
-}
-const searchProductByProductIsOnSale = () => {
-    filteredProductList.value = productList.value.filter(
-        product => product.productIsOnSale === searchKey.value
-    );
-}
-const searchProductByProductCategory = () => {
-    filteredProductList.value = productList.value.filter(
-        product => product.productCategory === searchKey.value
-    );
-}
+// 多条件搜索函数
 const search = () => {
-    if (searchKind.value == '') {
-        ElMessageBox.alert('请选择筛选条件', '提示', {
+    // 检查是否有至少一个搜索条件
+    const hasSearchCondition = Object.values(searchConditions.value).some(value => value !== '');
+    
+    if (!hasSearchCondition) {
+        ElMessageBox.alert('请至少输入一个搜索条件', '提示', {
           confirmButtonText: 'OK',
           callback: (action) => {},
-          })
-        return
-    } else if (searchKey.value == '') {
-        ElMessageBox.alert('检索不能为空', '提示', {
+        })
+        return;
+    }
+
+    // 验证价格范围
+    if (searchConditions.value.productPriceMin && searchConditions.value.productPriceMax && 
+        searchConditions.value.productPriceMin > searchConditions.value.productPriceMax) {
+        ElMessageBox.alert('最小价格不能大于最大价格', '提示', {
           confirmButtonText: 'OK',
           callback: (action) => {},
-          })
-        return
+        })
+        return;
     }
-    switch (searchKind.value) {
-        case 'productName':
-            searchProductByProductName(searchKey.value);
-            break
-        case 'productPrice':
-            searchProductByProductPrice(searchKey.value);
-            break
-        case 'productCategory':
-            searchProductByProductCategory(searchKey.value);
-            break
-        case 'productStock':
-            searchProductByProductStock(searchKey.value);
-            break
-        case 'productIsOnSale':
-            searchProductByProductIsOnSale(searchKey.value);
-            break
+
+    // 验证库存范围
+    if (searchConditions.value.productStockMin && searchConditions.value.productStockMax && 
+        searchConditions.value.productStockMin > searchConditions.value.productStockMax) {
+        ElMessageBox.alert('最小库存不能大于最大库存', '提示', {
+          confirmButtonText: 'OK',
+          callback: (action) => {},
+        })
+        return;
     }
+
+    filteredProductList.value = productList.value.filter(product => {
+        // 商品名搜索
+        if (searchConditions.value.productName && 
+            !product.productName.toLowerCase().includes(searchConditions.value.productName.toLowerCase())) {
+            return false;
+        }
+        
+        // 商品价格范围搜索
+        if (searchConditions.value.productPriceMin && 
+            product.productPrice < searchConditions.value.productPriceMin) {
+            return false;
+        }
+        
+        if (searchConditions.value.productPriceMax && 
+            product.productPrice > searchConditions.value.productPriceMax) {
+            return false;
+        }
+        
+        // 库存范围搜索
+        if (searchConditions.value.productStockMin && 
+            product.productStock < searchConditions.value.productStockMin) {
+            return false;
+        }
+        
+        if (searchConditions.value.productStockMax && 
+            product.productStock > searchConditions.value.productStockMax) {
+            return false;
+        }
+        
+        // 上架状态搜索
+        if (searchConditions.value.productIsOnSale) {
+            const saleStatus = product.productIsOnSale ? '是' : '否';
+            if (!saleStatus.includes(searchConditions.value.productIsOnSale)) {
+                return false;
+            }
+        }
+        
+        // 商品类别搜索
+        if (searchConditions.value.productCategory && 
+            !product.productCategory.categoryName.toLowerCase().includes(searchConditions.value.productCategory.toLowerCase())) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // 重置分页到第一页
+    currentPage.value = 1;
 }
 
 const resetSearch = () => {
   filteredProductList.value = [...productList.value];
-  searchKey.value = '';
+  // 清空所有搜索条件
+  searchConditions.value = {
+      productName: '',
+      productPriceMin: '',
+      productPriceMax: '',
+      productStockMin: '',
+      productStockMax: '',
+      productIsOnSale: '',
+      productCategory: ''
+  };
+  currentPage.value = 1;
 }
 
-const searchOptions = [
-  {
-    value: 'productName',
-    label: '商品名',
-  },
-  {
-    value: 'productPrice',
-    label: '商品单价',
-  },
-  {
-    value: 'productCategory',
-    label: '商品类别',
-  },
-  {
-    value: 'productStock',
-    label: '库存数量',
-  },
-  {
-    value: 'productIsOnSale',
-    label: '是否上架',
-  },
-]
-const searchKind = ref('')
-
-const autocompletePlaceHolder = ref('请选择筛选条件')
-
-const updateAutoCompletePlaceHolder = () => {
-    switch (searchKind.value) {
-        case 'productName':
-            autocompletePlaceHolder.value = '请输入商品名';
-            break
-        case 'productPrice':
-            autocompletePlaceHolder.value = '请输入商品单价';
-            break
-        case 'productCategory':
-            autocompletePlaceHolder.value = '请输入商品类别';
-            break
-        case 'productStock':
-            autocompletePlaceHolder.value = '请输入库存数量';
-            break
-        case 'productIsOnSale':
-            autocompletePlaceHolder.value = '请输入是否上架';
-            break
-    }
-    if (searchKind.value == '') {
-        isAllowSearch.value = false
-    } else {
-        isAllowSearch.value = true
-    }
-}
 const createProduct = () => {
     router.push({
         path: '/createProduct',
@@ -318,34 +315,91 @@ const editButtonPressed = (productName) => {
 <template>
     <h1>商品管理</h1>
     <el-space wrap direction="vertical">
-        <el-space warp direction="horizontal">
-            <el-select
-                v-model="searchKind"
-                placeholder="筛选条件"
-                size="default"
-                style="width: 100px"
-                @change="updateAutoCompletePlaceHolder"
-                >
-                <el-option
-                    v-for="item in searchOptions"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                />
-            </el-select>
-            <el-autocomplete
-                v-model="searchKey"
-                :fetch-suggestions="querySearch"
-                :trigger-on-focus="false"
-                class="inline-input w-50"
-                :placeholder="autocompletePlaceHolder"
-                @select="handleSelect"
-                :disabled="!isAllowSearch"
-            />
-            <el-button @click="search" type="primary">查询</el-button>
-            <el-button @click="resetSearch" type="success">重置</el-button>
-            <el-button @click="createProduct" type="warning">新增</el-button>
-        </el-space>
+        <!-- 多条件搜索区域 -->
+        <el-card class="search-card">
+            <template #header>
+                <div class="card-header">
+                    <span>搜索条件</span>
+                </div>
+            </template>
+            <el-form :model="searchConditions" label-width="80px" inline>
+                <el-form-item label="商品名">
+                    <el-autocomplete
+                        v-model="searchConditions.productName"
+                        :fetch-suggestions="queryProductName"
+                        placeholder="请输入商品名"
+                        clearable
+                        style="width: 200px"
+                        :trigger-on-focus="false"
+                    />
+                </el-form-item>
+                <el-form-item label="商品价格">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <el-input-number
+                            v-model="searchConditions.productPriceMin"
+                            placeholder="最小价格"
+                            :min="0"
+                            :precision="2"
+                            style="width: 120px"
+                        />
+                        <span style="color: #909399;">至</span>
+                        <el-input-number
+                            v-model="searchConditions.productPriceMax"
+                            placeholder="最大价格"
+                            :min="0"
+                            :precision="2"
+                            style="width: 120px"
+                        />
+                    </div>
+                </el-form-item>
+                <el-form-item label="库存数量">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <el-input-number
+                            v-model="searchConditions.productStockMin"
+                            placeholder="最小库存"
+                            :min="0"
+                            :precision="0"
+                            style="width: 120px"
+                        />
+                        <span style="color: #909399;">至</span>
+                        <el-input-number
+                            v-model="searchConditions.productStockMax"
+                            placeholder="最大库存"
+                            :min="0"
+                            :precision="0"
+                            style="width: 120px"
+                        />
+                    </div>
+                </el-form-item>
+                <el-form-item label="上架状态">
+                    <el-select 
+                        v-model="searchConditions.productIsOnSale" 
+                        placeholder="请选择上架状态"
+                        clearable
+                        style="width: 200px"
+                    >
+                        <el-option label="是" value="是" />
+                        <el-option label="否" value="否" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="商品类别">
+                    <el-cascader
+                        v-model="searchConditions.productCategory"
+                        :options="categoryOptions"
+                        :props="cascaderProps"
+                        placeholder="请选择商品类别"
+                        clearable
+                        style="width: 200px"
+                    />
+                </el-form-item>
+                <el-form-item>
+                    <el-button @click="search" type="primary">查询</el-button>
+                    <el-button @click="resetSearch" type="success">重置</el-button>
+                    <el-button @click="createProduct" type="warning">新增</el-button>
+                </el-form-item>
+            </el-form>
+        </el-card>
+        
         <div v-if="numberOfProducts == 0">
             <h1>没有商品记录</h1>
         </div>
@@ -422,5 +476,16 @@ const editButtonPressed = (productName) => {
 <style>
     .product-descriptions {
         width: 1000px;
+    }
+    
+    .search-card {
+        width: 100%;
+        margin-bottom: 20px;
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 </style>

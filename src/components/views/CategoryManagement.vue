@@ -537,6 +537,13 @@ const handleDelete = async (category) => {
     
     // 删除分类
     flatCategories.value = flatCategories.value.filter(item => item.categoryId !== category.categoryId);
+    try {
+        const response = await axios.delete('http://localhost:8080/api/category/' + category.categoryId)
+        console.log(response);
+        
+    } catch (error) {
+        console.log('Failed to delete category by categoryId', error);
+    }
     ElMessage.success('分类删除成功');
   } catch (error) {
     // 用户取消删除

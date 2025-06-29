@@ -315,6 +315,36 @@ const updateAutoCompletePlaceHolder = () => {
     }
 }
 
+const dialogVisible = ref(false)
+const currentProduct = ref(null)
+
+const checkProductInfo = async (productName) => {
+    try {
+        const response = await axios.get('http://localhost:8080/api/product/byProductName/' + productName)
+        console.log('Successfully get product by productId', response);
+        currentProduct.value = response.data.data; // 存储商品信息
+        dialogVisible.value = true; // 打开对话框
+    } catch (error) {
+        console.log('Failed to get product by productname', error);
+        ElMessage({
+            message: '获取商品信息失败',
+            type: 'error',
+        })
+    }
+}
+
+// 修改后的显示商品对话框函数
+const showProductDialog = (order) => {
+    if (order.goodName) {  // 使用订单中的goodName字段
+        checkProductInfo(order.goodName);
+    } else {
+        ElMessage({
+            message: '该订单没有商品名称信息',
+            type: 'warning',
+        })
+    }
+}
+
 </script>
 
 <template>
@@ -355,7 +385,7 @@ const updateAutoCompletePlaceHolder = () => {
                     <!-- <p>{{ order }}</p> -->
                     <el-descriptions
                         class="order-descriptions"
-                        :column="5"
+                        :column="4"
                         size="default"
                         border
                     >
@@ -394,14 +424,6 @@ const updateAutoCompletePlaceHolder = () => {
                             </div>
                         </template>
                             {{ order.goodQuantity }}
-                        </el-descriptions-item>
-                        <el-descriptions-item>
-                        <template #label>
-                            <div class="cell-item">
-                                修改
-                            </div>
-                        </template>
-                        <el-button @click="editInfoPressed(order.orderName)" type="primary" plain>修改</el-button>
                         </el-descriptions-item>
                         <el-descriptions-item>
                         <template #label>
@@ -462,13 +484,16 @@ const updateAutoCompletePlaceHolder = () => {
                         </template>
                             {{ order.createTime }}
                         </el-descriptions-item>
-                        <el-descriptions-item>
-                        <template #label>
-                            <div class="cell-item">
-                                删除
-                            </div>
-                        </template>
-                        <el-button @click="deleteButtonPressed(order.orderName)" type="danger" plain>删除</el-button>
+                            <el-descriptions-item>
+                            <template #label>
+                                <div class="cell-item">
+                                    <el-icon></el-icon>
+                                    操作
+                                </div>
+                            </template>
+                            <el-button @click="showProductDialog(order)" type="success" plain>查看订单商品</el-button>
+                            <el-button @click="editInfoPressed(order.orderName)" type="primary" plain>修改</el-button>
+                            <el-button @click="deleteButtonPressed(order.orderName)" type="danger" plain>删除</el-button>
                         </el-descriptions-item>
                     </el-descriptions>
                 </div>
@@ -484,6 +509,47 @@ const updateAutoCompletePlaceHolder = () => {
         </div>
     </el-space>
     <!-- <p>{{ userList }}</p> -->
+     <el-dialog
+        v-model="dialogVisible"
+        title="商品详情"
+        width="500"
+    >
+        <div v-if="currentProduct">
+            <el-descriptions :column="1" border>
+                <el-descriptions-item label="商品ID">{{ currentProduct.productId }}</el-descriptions-item>
+                <el-descriptions-item label="商品名称">{{ currentProduct.productName }}</el-descriptions-item>
+                <el-descriptions-item label="商品描述">{{ currentProduct.productDescription }}</el-descriptions-item>
+                <el-descriptions-item label="商品价格">{{ currentProduct.productPrice }}元</el-descriptions-item>
+                <el-descriptions-item label="库存数量">{{ currentProduct.productStock }}</el-descriptions-item>
+                <el-descriptions-item label="是否在售">
+                    <el-tag :type="currentProduct.productIsOnSale ? 'success' : 'danger'">
+                        {{ currentProduct.productIsOnSale ? '在售' : '下架' }}
+                    </el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="商品评分">
+                    <el-rate v-model="currentProduct.productScore" disabled show-score />
+                </el-descriptions-item>
+                <el-descriptions-item label="商品分类">
+                    {{ currentProduct.productCategory?.categoryName || '无分类' }}
+                </el-descriptions-item>
+            </el-descriptions>
+            <div style="margin-top: 20px; text-align: center;">
+                <el-image 
+                    style="width: 200px; height: 200px"
+                    :src="currentProduct.productCoverImageUrl" 
+                    fit="contain"
+                />
+            </div>
+        </div>
+        <div v-else>
+            正在加载商品信息...
+        </div>
+        <template #footer>
+            <div class="dialog-footer">
+                <el-button @click="dialogVisible = false">关闭</el-button>
+            </div>
+        </template>
+    </el-dialog>
 </template>
 
 <style>

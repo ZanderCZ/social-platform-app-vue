@@ -1,16 +1,17 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { reactive } from 'vue'
 import { onMounted } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import axios from 'axios'
-import { Edit, Check, Back } from '@element-plus/icons-vue'
+import { Edit, Check, Back, Search } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 
 const form = reactive({
+  userName: '',
   goodName: '',
   goodCount: 1,
   totalAmount: 1.0,
@@ -18,6 +19,21 @@ const form = reactive({
   paymentMethod: '',
   createTime: '',
 })
+
+// 买家选择对话框相关
+const buyerDialogVisible = ref(false);
+const allBuyers = ref([]);
+const selectedBuyer = ref(null);
+const buyerSearchKeyword = ref('');
+
+// 商品选择对话框相关
+const productDialogVisible = ref(false);
+const allProducts = ref([]);
+const selectedProduct = ref(null);
+const productSearchKeyword = ref('');
+// 商品分类相关
+const allCategories = ref([]);
+const selectedCategory = ref('');
 
 const getOrderIdByOrderName = async (orderName) => {
     try {
@@ -94,6 +110,134 @@ const updateTotalAmount = async () => {
         console.log('Failed to get product by productName', error);
     }
 }
+
+// 获取所有买家信息
+const getAllBuyers = async () => {
+  try {
+    const response = await axios.get('http://localhost:8080/api/user/all');
+    console.log('Get all buyers success', response);
+    allBuyers.value = response.data.data;
+  } catch (error) {
+    console.log('Failed to get buyers', error);
+    throw error;
+  }
+}
+
+// 获取所有商品信息
+const getAllProducts = async () => {
+  try {
+    const response = await axios.get('http://localhost:8080/api/product/all');
+    console.log('Get all products success', response);
+    allProducts.value = response.data.data;
+  } catch (error) {
+    console.log('Failed to get products', error);
+    throw error;
+  }
+}
+
+// 分类数据转换为树形结构
+function categoryListToTree(list) {
+  const categoryMap = new Map();
+  const rootCategories = [];
+
+  // 首先创建所有分类的映射
+  list.forEach(category => {
+    categoryMap.set(category.categoryId, {
+      ...category,
+      value: category.categoryId,
+      label: category.categoryName,
+      children: []
+    });
+  });
+
+  // 构建父子关系
+  list.forEach(category => {
+    const node = categoryMap.get(category.categoryId);
+    
+    if (category.categoryParentId === 0) {
+      // 根分类
+      rootCategories.push(node);
+    } else {
+      // 子分类
+      const parent = categoryMap.get(category.categoryParentId);
+      if (parent) {
+        parent.children.push(node);
+      }
+    }
+  });
+
+  return rootCategories;
+}
+
+// 获取所有商品分类信息
+const getAllCategories = async () => {
+  try {
+    const response = await axios.get('http://localhost:8080/api/category/all');
+    // 转换为树形结构
+    allCategories.value = categoryListToTree(response.data.data);
+  } catch (error) {
+    console.log('Failed to get categories', error);
+    throw error;
+  }
+}
+
+// 打开买家选择对话框
+const openBuyerDialog = () => {
+  buyerDialogVisible.value = true;
+  getAllBuyers();
+}
+
+// 打开商品选择对话框
+const openProductDialog = () => {
+  productDialogVisible.value = true;
+  getAllProducts();
+  getAllCategories();
+}
+
+// 选择买家
+const selectBuyer = (buyer) => {
+  selectedBuyer.value = buyer;
+  form.userName = buyer.userName;
+  buyerDialogVisible.value = false;
+}
+
+// 选择商品
+const selectProduct = (product) => {
+  selectedProduct.value = product;
+  form.goodName = product.productName;
+  productDialogVisible.value = false;
+  // 更新商品数量和总金额
+  updateTotalAmount();
+}
+
+// 过滤买家列表
+const filteredBuyers = computed(() => {
+  if (!buyerSearchKeyword.value) {
+    return allBuyers.value;
+  }
+  return allBuyers.value.filter(buyer => 
+    buyer.userName.toLowerCase().includes(buyerSearchKeyword.value.toLowerCase()) ||
+    buyer.phone.includes(buyerSearchKeyword.value) ||
+    buyer.email.toLowerCase().includes(buyerSearchKeyword.value.toLowerCase())
+  );
+});
+
+// 过滤商品列表
+const filteredProducts = computed(() => {
+  let list = allProducts.value;
+  if (selectedCategory.value) {
+    list = list.filter(product => product.productCategory && product.productCategory.categoryId === selectedCategory.value);
+  }
+  if (productSearchKeyword.value) {
+    const kw = productSearchKeyword.value.toLowerCase();
+    list = list.filter(product =>
+      product.productName.toLowerCase().includes(kw) ||
+      (product.productDescription && product.productDescription.toLowerCase().includes(kw)) ||
+      (product.productCategory && product.productCategory.categoryName.toLowerCase().includes(kw))
+    );
+  }
+  return list;
+});
 </script>
 
 <template>
@@ -109,11 +253,25 @@ const updateTotalAmount = async () => {
         <div class="form-grid">
           <div class="form-section">
             <el-form-item label="买家名称" class="form-item">
-              <el-input 
-                v-model="form.userName" 
-                placeholder="请输入买家名称"
-                clearable
-              />
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <el-input
+                  v-model="form.userName"
+                  placeholder="已选择的买家"
+                  readonly
+                  style="flex: 1"
+                />
+                <el-button @click="openBuyerDialog" type="primary" plain>
+                  选择买家
+                </el-button>
+                <el-button 
+                  v-if="form.userName" 
+                  @click="form.userName = ''" 
+                  type="danger" 
+                  plain
+                >
+                  清空
+                </el-button>
+              </div>
             </el-form-item>
             
             <el-form-item label="商品数量" class="form-item">
@@ -149,26 +307,25 @@ const updateTotalAmount = async () => {
           
           <div class="form-section">
             <el-form-item label="商品名称" class="form-item">
-                <el-input 
-                    v-model="form.goodName" 
-                    placeholder="请输入商品名称"
-                    clearable
-                    @change="updateTotalAmount()"
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <el-input
+                  v-model="form.goodName"
+                  placeholder="已选择的商品"
+                  readonly
+                  style="flex: 1"
                 />
-              <!-- <el-select
-                v-model="form.orderStatus"
-                placeholder="请输入商品名称"
-                style="width: 100%"
-                :disabled="!isEditing"
-              >
-                <el-option
-                  v-for="item in statusOptions"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-                  :style="{ color: item.color }"
-                />
-              </el-select> -->
+                <el-button @click="openProductDialog" type="primary" plain>
+                  选择商品
+                </el-button>
+                <el-button 
+                  v-if="form.goodName" 
+                  @click="form.goodName = ''" 
+                  type="danger" 
+                  plain
+                >
+                  清空
+                </el-button>
+              </div>
             </el-form-item>
             
             <!-- <el-form-item label="创建日期" class="form-item">
@@ -213,6 +370,123 @@ const updateTotalAmount = async () => {
       </el-form>
     </div>
   </div>
+
+  <!-- 买家选择对话框 -->
+  <el-dialog
+    v-model="buyerDialogVisible"
+    title="选择买家"
+    width="800px"
+    :before-close="() => buyerDialogVisible = false"
+  >
+    <div style="margin-bottom: 20px;">
+      <el-input
+        v-model="buyerSearchKeyword"
+        placeholder="搜索买家（用户名、手机号、邮箱）"
+        clearable
+        style="width: 100%"
+      >
+        <template #prefix>
+          <el-icon><Search /></el-icon>
+        </template>
+      </el-input>
+    </div>
+    
+    <el-table
+      :data="filteredBuyers"
+      style="width: 100%"
+      max-height="400"
+      @row-click="selectBuyer"
+      highlight-current-row
+    >
+      <el-table-column prop="userName" label="用户名" width="120" />
+      <el-table-column prop="phone" label="手机号" width="130" />
+      <el-table-column prop="email" label="邮箱" width="180" />
+      <el-table-column prop="region" label="地区" width="120" />
+      <el-table-column prop="createTime" label="注册时间" width="120" />
+      <el-table-column label="操作" width="100" fixed="right">
+        <template #default="scope">
+          <el-button
+            size="small"
+            type="primary"
+            @click.stop="selectBuyer(scope.row)"
+          >
+            选择
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+    
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="buyerDialogVisible = false">取消</el-button>
+      </span>
+    </template>
+  </el-dialog>
+
+  <!-- 商品选择对话框 -->
+  <el-dialog
+    v-model="productDialogVisible"
+    title="选择商品"
+    width="900px"
+    :before-close="() => productDialogVisible = false"
+  >
+    <div style="margin-bottom: 20px; display: flex; gap: 16px; align-items: center;">
+      <el-cascader
+        v-model="selectedCategory"
+        :options="allCategories"
+        placeholder="请选择商品分类"
+        clearable
+        :props="{ checkStrictly: false, emitPath: false, value: 'value', label: 'label', children: 'children' }"
+        style="width: 250px"
+      />
+      <el-input
+        v-model="productSearchKeyword"
+        placeholder="搜索商品（名称、描述、类别）"
+        clearable
+        style="width: 300px"
+      >
+        <template #prefix>
+          <el-icon><Search /></el-icon>
+        </template>
+      </el-input>
+    </div>
+    
+    <el-table
+      :data="filteredProducts"
+      style="width: 100%"
+      max-height="400"
+      @row-click="selectProduct"
+      highlight-current-row
+    >
+      <el-table-column prop="productName" label="商品名称" width="150" />
+      <el-table-column prop="productDescription" label="商品描述" width="200" />
+      <el-table-column prop="productPrice" label="价格" width="100">
+        <template #default="scope">
+          ¥{{ scope.row.productPrice }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="productStock" label="库存" width="80" />
+      <el-table-column prop="productCategory.categoryName" label="类别" width="120" />
+      <el-table-column prop="createTime" label="创建时间" width="120" />
+      <el-table-column label="操作" width="100" fixed="right">
+        <template #default="scope">
+          <el-button
+            size="small"
+            type="primary"
+            @click.stop="selectProduct(scope.row)"
+          >
+            选择
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+    
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="productDialogVisible = false">取消</el-button>
+      </span>
+    </template>
+  </el-dialog>
 </template>
 
 <style scoped>
@@ -279,6 +553,12 @@ const updateTotalAmount = async () => {
 
 .action-button {
   width: 180px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 @media (max-width: 768px) {

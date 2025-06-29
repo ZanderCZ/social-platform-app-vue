@@ -10,6 +10,261 @@ const userList = ref([]);         // 原始用户列表
 const filteredUserList = ref([]); // 当前用于渲染的用户列表
 const currentPage = ref(1);
 
+// 多条件搜索字段
+const searchConditions = ref({
+    userName: '',
+    phone: '',
+    email: '',
+    gender: '',
+    region: ''
+});
+
+// 自动提示选项
+const userNameSuggestions = ref([]);
+const phoneSuggestions = ref([]);
+const emailSuggestions = ref([]);
+
+// 地区选项
+const regionOptions = ref([]);
+
+// 完整的地区选项数据
+const fullRegionOptions = [
+  {
+    value: 'asia',
+    label: '亚洲',
+    children: [
+      {
+        value: 'eastAsia',
+        label: '东亚',
+        children: [
+          {
+            value: 'china',
+            label: '中国',
+          },
+          {
+            value: 'japan',
+            label: '日本',
+          },
+          {
+            value: 'southKorea',
+            label: '韩国',
+          },
+          {
+            value: 'northKorea',
+            label: '朝鲜',
+          },
+          {
+            value: 'mengo',
+            label: '蒙古',
+          },
+        ],
+      },
+      {
+        value: 'southeastAsia',
+        label: '东南亚',
+        children: [
+          {
+            value: 'vietnam',
+            label: '越南',
+          },
+          {
+            value: 'mala',
+            label: '马来西亚',
+          },
+          {
+            value: 'singapore',
+            label: '新加坡',
+          },
+          {
+            value: 'tailand',
+            label: '泰国',
+          },
+        ],
+      },
+      {
+        value: 'southAsia',
+        label: '南亚',
+        children: [
+          {
+            value: 'india',
+            label: '印度',
+          },
+          {
+            value: 'pakistan',
+            label: '巴基斯坦',
+          },
+        ],
+      },
+      {
+        value: 'westAsia',
+        label: '西亚',
+        children: [
+          {
+            value: 'saudi',
+            label: '沙特',
+          },
+          {
+            value: 'iran',
+            label: '伊朗',
+          },
+          {
+            value: 'turkeia',
+            label: '土耳其',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    value: 'america',
+    label: '美洲',
+    children: [
+      {
+        value: 'northAmarica',
+        label: '北美',
+        children: [
+          {
+            value: 'usa',
+            label: '美国',
+          },
+          {
+            value: 'canada',
+            label: '加拿大',
+          },
+          {
+            value: 'mexico',
+            label: '墨西哥',
+          },
+        ],
+      },
+      {
+        value: 'southAmerica',
+        label: '南美',
+        children: [
+          {
+            value: 'brazil',
+            label: '巴西',
+          },
+          {
+            value: 'argentina',
+            label: '阿根廷',
+          },
+          {
+            value: 'chile',
+            label: '智利',
+          },
+          {
+            value: 'colombia',
+            label: '哥伦比亚',
+          },
+          {
+            value: 'bolivia',
+            label: '玻利维亚',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    value: 'euro',
+    label: '欧洲',
+    children: [
+      {
+        value: 'weatEuro',
+        label: '西欧',
+        children: [
+          {
+            value: 'england',
+            label: '英国',
+          },
+          {
+            value: 'france',
+            label: '法国',
+          },
+          {
+            value: 'germany',
+            label: '德国',
+          },
+          {
+            value: 'belgium',
+            label: '比利时',
+          },
+          {
+            value: 'switzerland',
+            label: '瑞士',
+          },
+          {
+            value: 'austria',
+            label: '奥地利',
+          },
+        ],
+      },
+      {
+        value: 'southEuro',
+        label: '南欧',
+        children: [
+          {
+            value: 'italy',
+            label: '意大利',
+          },
+          {
+            value: 'spain',
+            label: '西班牙',
+          },
+          {
+            value: 'portugal',
+            label: '葡萄牙',
+          },
+          {
+            value: 'greece',
+            label: '希腊',
+          },
+          {
+            value: 'croatia',
+            label: '克罗地亚',
+          },
+        ],
+      },
+      {
+        value: 'eastEuro',
+        label: '东欧',
+        children: [
+          {
+            value: 'russia',
+            label: '俄罗斯',
+          },
+          {
+            value: 'ukraine',
+            label: '乌克兰',
+          },
+          {
+            value: 'poland',
+            label: '波兰',
+          },
+          {
+            value: 'slovakia',
+            label: '斯洛伐克',
+          },
+          {
+            value: 'hungary',
+            label: '匈牙利',
+          },
+        ],
+      },
+    ],
+  },
+];
+
+// 级联选择器配置
+const cascaderProps = {
+  value: 'value',
+  label: 'label',
+  children: 'children',
+  checkStrictly: false,
+  emitPath: false,
+  expandTrigger: 'hover'
+};
+
 const getUserCount = async () => {
     // 获取用户数量
     try {
@@ -27,10 +282,59 @@ const getUserList = async () => {
     const response = await axios.get('http://localhost:8080/api/user/all')
     userList.value = response.data.data;
     filteredUserList.value = [...userList.value]; // 拷贝初始数据用于渲染
+    
+    // 初始化自动提示选项
+    updateSuggestions();
   } catch (error) {
     console.log('Failed', error);
     throw error;
   }
+}
+
+// 更新自动提示选项
+const updateSuggestions = () => {
+    // 用户名提示
+    const uniqueUserNames = [...new Set(userList.value.map(user => user.userName))];
+    userNameSuggestions.value = uniqueUserNames.map(name => ({ value: name }));
+    
+    // 手机号提示
+    const uniquePhones = [...new Set(userList.value.map(user => user.phone))];
+    phoneSuggestions.value = uniquePhones.map(phone => ({ value: phone }));
+    
+    // 邮箱提示
+    const uniqueEmails = [...new Set(userList.value.map(user => user.email))];
+    emailSuggestions.value = uniqueEmails.map(email => ({ value: email }));
+    
+    // 初始化地区选项
+    regionOptions.value = fullRegionOptions;
+}
+
+// 过滤提示选项
+const filterSuggestions = (queryString, suggestions) => {
+    if (queryString === '') {
+        return suggestions;
+    }
+    return suggestions.filter(item => 
+        item.value.toLowerCase().includes(queryString.toLowerCase())
+    );
+}
+
+// 用户名自动提示
+const queryUserName = (queryString, cb) => {
+    const results = filterSuggestions(queryString, userNameSuggestions.value);
+    cb(results);
+}
+
+// 手机号自动提示
+const queryPhone = (queryString, cb) => {
+    const results = filterSuggestions(queryString, phoneSuggestions.value);
+    cb(results);
+}
+
+// 邮箱自动提示
+const queryEmail = (queryString, cb) => {
+    const results = filterSuggestions(queryString, emailSuggestions.value);
+    cb(results);
 }
 
 onMounted(async () => {
@@ -97,213 +401,70 @@ const paginatedUsers = computed(() => {
   return filteredUserList.value.slice(start, end);
 });
 
-var searchKey = ref('')
-
-const querySearch = (queryString, cb) => {
-    var results = queryString
-        ? userList.value.filter(createFilter(queryString)).map(user => ({
-            value: user.phone
-        }))
-        : userList.value.map(user => ({
-            value: user.userName
-        }));
-    switch (searchKind.value) {
-        case 'userName':
-            results = queryString
-                ? userList.value.filter(createFilter(queryString)).map(user => ({
-                    value: user.userName
-                }))
-                : userList.value.map(user => ({
-                    value: user.userName
-                }))
-            cb(results)
-            break
-        case 'phone':
-            results = queryString
-                ? userList.value.filter(createFilter(queryString)).map(user => ({
-                    value: user.phone
-                }))
-                : userList.value.map(user => ({
-                    value: user.phone
-                }))
-            cb(results)
-            break
-        case 'region':
-            results = queryString
-                ? userList.value.filter(createFilter(queryString)).map(user => ({
-                    value: user.region
-                }))
-                : userList.value.map(user => ({
-                    value: user.region
-                }))
-            cb(results)
-            break
-        case 'email':
-            results = queryString
-                ? userList.value.filter(createFilter(queryString)).map(user => ({
-                    value: user.email
-                }))
-                : userList.value.map(user => ({
-                    value: user.email
-                }))
-            cb(results)
-            break
-        case 'gender':
-            results = queryString
-                ? userList.value.filter(createFilter(queryString)).map(user => ({
-                    value: user.gender
-                }))
-                : userList.value.map(user => ({
-                    value: user.gender
-                }))
-            cb(results)
-            break
-    }
-}
-const createFilter = (queryString) => {
-  return (user) => {
-    switch (searchKind.value) {
-        case 'userName':
-            return (
-                user.userName.toLowerCase().indexOf(queryString.toLowerCase()) === 0
-            )
-        case 'phone':
-            return (
-                user.phone.toLowerCase().indexOf(queryString.toLowerCase()) === 0
-            )
-        case 'region':
-            return (
-                user.region.toLowerCase().indexOf(queryString.toLowerCase()) === 0
-            )
-        case 'email':
-            return (
-                user.email.toLowerCase().indexOf(queryString.toLowerCase()) === 0
-            )
-        case 'gender':
-            return (
-                user.gender.toLowerCase().indexOf(queryString.toLowerCase()) === 0
-            )
-    }
-
-  }
-}
-const handleSelect = (item) => {
-  console.log(item)
-}
-
-const searchUserByUserName = () => {
-  filteredUserList.value = userList.value.filter(
-    user => user.userName === searchKey.value
-  );
-}
-const searchUserByPhone = () => {
-    filteredUserList.value = userList.value.filter(
-        user => user.phone === searchKey.value
-    );
-}
-const searchUserByEmail = () => {
-    filteredUserList.value = userList.value.filter(
-        user => user.email === searchKey.value
-    );
-}
-const searchUserByGender = () => {
-    filteredUserList.value = userList.value.filter(
-        user => user.gender === searchKey.value
-    );
-}
-const searchUserByRegion = () => {
-    filteredUserList.value = userList.value.filter(
-        user => user.region === searchKey.value
-    );
-}
+// 多条件搜索函数
 const search = () => {
-    if (searchKind.value == '') {
-        ElMessageBox.alert('请选择筛选条件', '提示', {
+    // 检查是否有至少一个搜索条件
+    const hasSearchCondition = Object.values(searchConditions.value).some(value => value.trim() !== '');
+    
+    if (!hasSearchCondition) {
+        ElMessageBox.alert('请至少输入一个搜索条件', '提示', {
           confirmButtonText: 'OK',
           callback: (action) => {},
-          })
-        return
-    } else if (searchKey.value == '') {
-        ElMessageBox.alert('检索不能为空', '提示', {
-          confirmButtonText: 'OK',
-          callback: (action) => {},
-          })
-        return
+        })
+        return;
     }
-    switch (searchKind.value) {
-        case 'userName':
-            searchUserByUserName(searchKey.value);
-            break
-        case 'phone':
-            searchUserByPhone(searchKey.value);
-            break
-        case 'region':
-            searchUserByRegion(searchKey.value);
-            break
-        case 'email':
-            searchUserByEmail(searchKey.value);
-            break
-        case 'gender':
-            searchUserByGender(searchKey.value);
-            break
-    }
+
+    filteredUserList.value = userList.value.filter(user => {
+        // 用户名搜索
+        if (searchConditions.value.userName && 
+            !user.userName.toLowerCase().includes(searchConditions.value.userName.toLowerCase())) {
+            return false;
+        }
+        
+        // 手机号搜索
+        if (searchConditions.value.phone && 
+            !user.phone.includes(searchConditions.value.phone)) {
+            return false;
+        }
+        
+        // 邮箱搜索
+        if (searchConditions.value.email && 
+            !user.email.toLowerCase().includes(searchConditions.value.email.toLowerCase())) {
+            return false;
+        }
+        
+        // 性别搜索
+        if (searchConditions.value.gender) {
+            const genderText = user.gender === 'male' ? '男' : user.gender === 'female' ? '女' : '未知';
+            if (!genderText.includes(searchConditions.value.gender)) {
+                return false;
+            }
+        }
+        
+        // 地区搜索
+        if (searchConditions.value.region && 
+            user.region.toLowerCase() !== searchConditions.value.region.toLowerCase()) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // 重置分页到第一页
+    currentPage.value = 1;
 }
 
 const resetSearch = () => {
   filteredUserList.value = [...userList.value];
-  searchKey.value = '';
-}
-
-const searchOptions = [
-  {
-    value: 'userName',
-    label: '用户名',
-  },
-  {
-    value: 'phone',
-    label: '手机号',
-  },
-  {
-    value: 'email',
-    label: '邮箱',
-  },
-  {
-    value: 'gender',
-    label: '性别',
-  },
-  {
-    value: 'region',
-    label: '地区',
-  },
-]
-const searchKind = ref('')
-const isAllowSearch = ref(false)
-
-const autocompletePlaceHolder = ref('请选择筛选条件')
-
-const updateAutoCompletePlaceHolder = () => {
-    switch (searchKind.value) {
-        case 'userName':
-            autocompletePlaceHolder.value = '请输入用户名';
-            break
-        case 'phone':
-            autocompletePlaceHolder.value = '请输入手机号';
-            break
-        case 'region':
-            autocompletePlaceHolder.value = '请输入地区';
-            break
-        case 'email':
-            autocompletePlaceHolder.value = '请输入邮箱';
-            break
-        case 'gender':
-            autocompletePlaceHolder.value = '请输入性别';
-            break
-    }
-    if (searchKind.value == '' || searchKind.value == null) {
-        isAllowSearch.value = false
-    } else {
-        isAllowSearch.value = true
-    }
+  // 清空所有搜索条件
+  searchConditions.value = {
+      userName: '',
+      phone: '',
+      email: '',
+      gender: '',
+      region: ''
+  };
+  currentPage.value = 1;
 }
 
 const checkUserOrders = (userName) => {
@@ -321,39 +482,98 @@ const createUser = () => {
     })
 }
 
+// 将英文地区转换为中文显示
+const getRegionDisplayName = (englishRegion) => {
+  // 递归查找地区的中文名称
+  const findRegionLabel = (regions, targetValue) => {
+    for (const region of regions) {
+      if (region.value === targetValue) {
+        return region.label;
+      }
+      if (region.children) {
+        const found = findRegionLabel(region.children, targetValue);
+        if (found) return found;
+      }
+    }
+    return englishRegion; // 如果找不到对应的中文名称，返回原值
+  };
+  
+  return findRegionLabel(fullRegionOptions, englishRegion);
+}
+
 </script>
 
 <template>
     <h1>用户管理</h1>
     <el-space wrap direction="vertical">
-        <el-space warp direction="horizontal">
-            <el-select
-                v-model="searchKind"
-                placeholder="筛选条件"
-                size="default"
-                style="width: 100px"
-                @change="updateAutoCompletePlaceHolder"
-                >
-                <el-option
-                    v-for="item in searchOptions"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                />
-            </el-select>
-            <el-autocomplete
-                v-model="searchKey"
-                :fetch-suggestions="querySearch"
-                :trigger-on-focus="false"
-                class="inline-input w-50"
-                :placeholder="autocompletePlaceHolder"
-                @select="handleSelect"
-                :disabled="!isAllowSearch"
-            />
-            <el-button @click="search" type="primary">查询</el-button>
-            <el-button @click="resetSearch" type="success">重置</el-button>
-            <el-button @click="createUser" type="warning">新增</el-button>
-        </el-space>
+        <!-- 多条件搜索区域 -->
+        <el-card class="search-card">
+            <template #header>
+                <div class="card-header">
+                    <span>搜索条件</span>
+                </div>
+            </template>
+            <el-form :model="searchConditions" label-width="80px" inline>
+                <el-form-item label="用户名">
+                    <el-autocomplete
+                        v-model="searchConditions.userName"
+                        :fetch-suggestions="queryUserName"
+                        placeholder="请输入用户名"
+                        clearable
+                        style="width: 200px"
+                        :trigger-on-focus="false"
+                    />
+                </el-form-item>
+                <el-form-item label="手机号">
+                    <el-autocomplete
+                        v-model="searchConditions.phone"
+                        :fetch-suggestions="queryPhone"
+                        placeholder="请输入手机号"
+                        clearable
+                        style="width: 200px"
+                        :trigger-on-focus="false"
+                    />
+                </el-form-item>
+                <el-form-item label="邮箱">
+                    <el-autocomplete
+                        v-model="searchConditions.email"
+                        :fetch-suggestions="queryEmail"
+                        placeholder="请输入邮箱"
+                        clearable
+                        style="width: 200px"
+                        :trigger-on-focus="false"
+                    />
+                </el-form-item>
+                <el-form-item label="性别">
+                    <el-select 
+                        v-model="searchConditions.gender" 
+                        placeholder="请选择性别"
+                        clearable
+                        style="width: 200px"
+                    >
+                        <el-option label="男" value="男" />
+                        <el-option label="女" value="女" />
+                        <el-option label="未知" value="未知" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="地区">
+                    <el-cascader
+                        v-model="searchConditions.region"
+                        :options="regionOptions"
+                        :props="cascaderProps"
+                        placeholder="请选择地区"
+                        clearable
+                        style="width: 200px"
+                    />
+                </el-form-item>
+                <el-form-item>
+                    <el-button @click="search" type="primary">查询</el-button>
+                    <el-button @click="resetSearch" type="success">重置</el-button>
+                    <el-button @click="createUser" type="warning">新增</el-button>
+                </el-form-item>
+            </el-form>
+        </el-card>
+        
         <div v-if="numberOfUsers == 0">
             <h1>没有用户记录</h1>
         </div>
@@ -389,7 +609,7 @@ const createUser = () => {
                             <el-descriptions-item label="性别">未知</el-descriptions-item>
                         </div>
                         <el-descriptions-item label="手机号">{{ user.phone }}</el-descriptions-item>
-                        <el-descriptions-item label="地区">{{ user.region }}</el-descriptions-item>
+                        <el-descriptions-item label="地区">{{ getRegionDisplayName(user.region) }}</el-descriptions-item>
                         <el-descriptions-item label="邮箱">{{ user.email }}</el-descriptions-item>
                         <el-descriptions-item label="出生日期">{{ user.birthday }}</el-descriptions-item>
                         <el-descriptions-item label="修改信息">
@@ -420,5 +640,16 @@ const createUser = () => {
 <style>
 .user-descriptions {
   width: 1000px;
+}
+
+.search-card {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 </style>

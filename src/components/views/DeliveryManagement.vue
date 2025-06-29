@@ -1,20 +1,46 @@
 <script setup>
 import axios from 'axios';
 import { onMounted, ref, computed } from 'vue';
-import { ElMessage, ElMessageBox, formEmits } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
+import { Search } from '@element-plus/icons-vue'
 const router = useRouter()
 
-const numberOfDelivery = ref(0);
-const deliveryList = ref([]);         // 原始用户列表
-const filteredDeliveryList = ref([]); // 当前用于渲染的用户列表
+const numberOfDeliveries = ref(0);
+const deliveryList = ref([]);         // 原始物流列表
+const filteredDeliveryList = ref([]); // 当前用于渲染的物流列表
 const currentPage = ref(1);
 
+// 多条件搜索字段
+const searchConditions = ref({
+    deliveryId: '',
+    orderName: '',
+    userName: '',
+    expressCompany: ''
+});
+
+// 自动提示选项
+const deliveryIdSuggestions = ref([]);
+const expressCompanySuggestions = ref([]);
+
+// 订单选择对话框相关
+const orderDialogVisible = ref(false);
+const allOrders = ref([]);
+const selectedOrder = ref(null);
+const orderSearchKeyword = ref('');
+
+// 买家选择对话框相关
+const buyerDialogVisible = ref(false);
+const allBuyers = ref([]);
+const selectedBuyer = ref(null);
+const buyerSearchKeyword = ref('');
+
 const getDeliveryCount = async () => {
+    // 获取物流数量
     try {
         const response = await axios.get('http://localhost:8080/api/delivery/count')
         console.log('Get delivery count success', response);
-        numberOfDelivery.value = response.data.data;
+        numberOfDeliveries.value = response.data.data;
     } catch (error) {
         console.log('Failed', error);
         throw error;
@@ -26,10 +52,70 @@ const getDeliveryList = async () => {
     const response = await axios.get('http://localhost:8080/api/delivery/all')
     deliveryList.value = response.data.data;
     filteredDeliveryList.value = [...deliveryList.value]; // 拷贝初始数据用于渲染
+    
+    // 初始化自动提示选项
+    updateSuggestions();
   } catch (error) {
     console.log('Failed', error);
     throw error;
   }
+}
+
+// 获取所有订单信息
+const getAllOrders = async () => {
+  try {
+    const response = await axios.get('http://localhost:8080/api/order/all');
+    console.log('Get all orders success', response);
+    allOrders.value = response.data.data;
+  } catch (error) {
+    console.log('Failed to get orders', error);
+    throw error;
+  }
+}
+
+// 获取所有买家信息
+const getAllBuyers = async () => {
+  try {
+    const response = await axios.get('http://localhost:8080/api/user/all');
+    console.log('Get all buyers success', response);
+    allBuyers.value = response.data.data;
+  } catch (error) {
+    console.log('Failed to get buyers', error);
+    throw error;
+  }
+}
+
+// 更新自动提示选项
+const updateSuggestions = () => {
+    // 物流ID提示
+    const uniqueDeliveryIds = [...new Set(deliveryList.value.map(delivery => delivery.deliveryId))];
+    deliveryIdSuggestions.value = uniqueDeliveryIds.map(id => ({ value: id.toString() }));
+    
+    // 快递公司提示
+    const uniqueExpressCompanies = [...new Set(deliveryList.value.map(delivery => delivery.expressCompany))];
+    expressCompanySuggestions.value = uniqueExpressCompanies.map(company => ({ value: company }));
+}
+
+// 过滤提示选项
+const filterSuggestions = (queryString, suggestions) => {
+    if (queryString === '') {
+        return suggestions;
+    }
+    return suggestions.filter(item => 
+        item.value.toLowerCase().includes(queryString.toLowerCase())
+    );
+}
+
+// 物流ID自动提示
+const queryDeliveryId = (queryString, cb) => {
+    const results = filterSuggestions(queryString, deliveryIdSuggestions.value);
+    cb(results);
+}
+
+// 快递公司自动提示
+const queryExpressCompany = (queryString, cb) => {
+    const results = filterSuggestions(queryString, expressCompanySuggestions.value);
+    cb(results);
 }
 
 onMounted(async () => {
@@ -37,11 +123,11 @@ onMounted(async () => {
     getDeliveryList();
 })
 
-const editInfoPressed = (orderName) => {
+const editInfoPressed = (deliveryId) => {
     router.push({
-        path: '/editOrderInfo',
+        path: '/editDelivery',
         query: {
-            orderName: orderName
+            deliveryId: deliveryId
         }
     })
 }
@@ -62,7 +148,7 @@ const deleteById = async (deliveryId) => {
 
 const deleteButtonPressed = async (deliveryId) => {
   ElMessageBox.confirm(
-    '你确定要删除该商品吗?\n此操作不可恢复',
+    '你确定要删除该物流信息吗?\n此操作不可恢复',
     '警告',
     {
       confirmButtonText: '确定',
@@ -71,350 +157,363 @@ const deleteButtonPressed = async (deliveryId) => {
     }
   )
   .then(async () => {
-  try {
-    // const response = await axios.get('http://localhost:8080/api/product/byProductName/' + deliveryId);
-    // console.log('Successfully get product by productName', response);
-    
-    // 等待删除完成再刷新列表
     await deleteById(deliveryId);  
-    await getDeliveryList();  // 这里也加上 await
-
-    // 更新用户数量
+    await getDeliveryList();
     await getDeliveryCount();
-
-    } catch (error) {
-        // console.log('Failed to get user by productName or delete Product', error);
-    }
   })
   .catch(() => {});
 }
 
-const pageSize = 3;
+const pageSize = 4;
 const paginatedDeliveries = computed(() => {
   const start = (currentPage.value - 1) * pageSize;
   const end = start + pageSize;
   return filteredDeliveryList.value.slice(start, end);
 });
 
-var searchKey = ref('')
-
-const querySearch = (queryString, cb) => {
-    var results = queryString
-        ? deliveryList.value.filter(createFilter(queryString)).map(product => ({
-            value: product.productName
-        }))
-        : deliveryList.value.map(product => ({
-            value: product.productName
-        }));
-    switch (searchKind.value) {
-        case 'productName':
-            results = queryString
-                ? deliveryList.value.filter(createFilter(queryString)).map(product => ({
-                    value: product.productName
-                }))
-                : deliveryList.value.map(product => ({
-                    value: product.productName
-                }))
-            cb(results)
-            break
-        case 'productPrice':
-            results = queryString
-                ? deliveryList.value.filter(createFilter(queryString)).map(product => ({
-                    value: product.productPrice
-                }))
-                : deliveryList.value.map(product => ({
-                    value: product.productPrice
-                }))
-            cb(results)
-            break
-        case 'productStock':
-            results = queryString
-                ? deliveryList.value.filter(createFilter(queryString)).map(product => ({
-                    value: product.productStock
-                }))
-                : deliveryList.value.map(product => ({
-                    value: product.productStock
-                }))
-            cb(results)
-            break
-        case 'productIsOnSale':
-            results = queryString
-                ? deliveryList.value.filter(createFilter(queryString)).map(product => ({
-                    value: product.productIsOnSale
-                }))
-                : deliveryList.value.map(product => ({
-                    value: product.productIsOnSale
-                }))
-            cb(results)
-            break
-        case 'productCategory':
-            results = queryString
-                ? deliveryList.value.filter(createFilter(queryString)).map(product => ({
-                    value: product.productCategory
-                }))
-                : deliveryList.value.map(product => ({
-                    value: product.productCategory
-                }))
-            cb(results)
-            break
-    }
-}
-const createFilter = (queryString) => {
-  return (product) => {
-    const lowerQuery = queryString.toLowerCase()
-    switch (searchKind.value) {
-      case 'productName':
-        return product.productName.toLowerCase().includes(lowerQuery)
-      case 'productPrice':
-        return String(product.productPrice).toLowerCase().includes(lowerQuery)
-      case 'productStock':
-        return String(product.productStock).toLowerCase().includes(lowerQuery)
-      case 'productIsOnSale':
-        const saleStatus = product.productIsOnSale ? '是' : '否'
-        return saleStatus.includes(queryString)
-      case 'productCategory':
-        return String(product.productCategory.categoryName).toLowerCase().includes(lowerQuery)
-      default:
-        return false
-    }
-  }
-}
-
-const handleSelect = (item) => {
-  console.log(item)
-}
-
-const searchProductByProductName = () => {
-  filteredDeliveryList.value = deliveryList.value.filter(
-    product => product.productName === searchKey.value
-  );
-}
-const searchProductByProductPrice = () => {
-    filteredDeliveryList.value = deliveryList.value.filter(
-        product => product.productPrice === searchKey.value
-    );
-}
-const searchProductByProductStock = () => {
-    filteredDeliveryList.value = deliveryList.value.filter(
-        product => product.productStock === searchKey.value
-    );
-}
-const searchProductByProductIsOnSale = () => {
-    filteredDeliveryList.value = deliveryList.value.filter(
-        product => product.productIsOnSale === searchKey.value
-    );
-}
-const searchProductByProductCategory = () => {
-    filteredDeliveryList.value = deliveryList.value.filter(
-        product => product.productCategory === searchKey.value
-    );
-}
+// 多条件搜索函数
 const search = () => {
-    if (searchKind.value == '') {
-        ElMessageBox.alert('请选择筛选条件', '提示', {
-          confirmButtonText: 'OK',
-          callback: (action) => {},
-          })
-        return
-    } else if (searchKey.value == '') {
-        ElMessageBox.alert('检索不能为空', '提示', {
-          confirmButtonText: 'OK',
-          callback: (action) => {},
-          })
-        return
+    // 检查是否有至少一个搜索条件
+    const hasSearchCondition = Object.values(searchConditions.value).some(value => {
+        if (value === null || value === undefined) return false;
+        if (typeof value === 'string') return value.trim() !== '';
+        return value !== '';
+    });
+    
+    // 如果没有搜索条件，直接返回，不进行搜索
+    if (!hasSearchCondition) {
+        return;
     }
-    switch (searchKind.value) {
-        case 'productName':
-            searchProductByProductName(searchKey.value);
-            break
-        case 'productPrice':
-            searchProductByProductPrice(searchKey.value);
-            break
-        case 'productCategory':
-            searchProductByProductCategory(searchKey.value);
-            break
-        case 'productStock':
-            searchProductByProductStock(searchKey.value);
-            break
-        case 'productIsOnSale':
-            searchProductByProductIsOnSale(searchKey.value);
-            break
-    }
+
+    filteredDeliveryList.value = deliveryList.value.filter(delivery => {
+        // 物流ID搜索
+        if (searchConditions.value.deliveryId && 
+            !delivery.deliveryId.toString().includes(searchConditions.value.deliveryId)) {
+            return false;
+        }
+        
+        // 订单号搜索
+        if (searchConditions.value.orderName && 
+            !delivery.order.orderName.toLowerCase().includes(searchConditions.value.orderName.toLowerCase())) {
+            return false;
+        }
+        
+        // 买家搜索
+        if (searchConditions.value.userName && 
+            !delivery.order.userName.toLowerCase().includes(searchConditions.value.userName.toLowerCase())) {
+            return false;
+        }
+        
+        // 快递公司搜索
+        if (searchConditions.value.expressCompany && 
+            !delivery.expressCompany.toLowerCase().includes(searchConditions.value.expressCompany.toLowerCase())) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // 重置分页到第一页
+    currentPage.value = 1;
 }
 
 const resetSearch = () => {
   filteredDeliveryList.value = [...deliveryList.value];
-  searchKey.value = '';
+  // 清空所有搜索条件
+  searchConditions.value = {
+      deliveryId: '',
+      orderName: '',
+      userName: '',
+      expressCompany: ''
+  };
+  currentPage.value = 1;
 }
 
-const searchOptions = [
-  {
-    value: 'productName',
-    label: '商品名',
-  },
-  {
-    value: 'productPrice',
-    label: '商品单价',
-  },
-  {
-    value: 'productCategory',
-    label: '商品类别',
-  },
-  {
-    value: 'productStock',
-    label: '库存数量',
-  },
-  {
-    value: 'productIsOnSale',
-    label: '是否上架',
-  },
-]
-const searchKind = ref('')
+const createDelivery = () => {
+    router.push({
+        path: '/createDelivery'
+    })
+}
 
-const autocompletePlaceHolder = ref('请选择筛选条件')
+const dialogVisible = ref(false)
+const currentOrder = ref(null)
+const currentBuyer = ref(null)
+const activeDialog = ref('')
 
-const updateAutoCompletePlaceHolder = () => {
-    switch (searchKind.value) {
-        case 'productName':
-            autocompletePlaceHolder.value = '请输入商品名';
-            break
-        case 'productPrice':
-            autocompletePlaceHolder.value = '请输入商品单价';
-            break
-        case 'productCategory':
-            autocompletePlaceHolder.value = '请输入商品类别';
-            break
-        case 'productStock':
-            autocompletePlaceHolder.value = '请输入库存数量';
-            break
-        case 'productIsOnSale':
-            autocompletePlaceHolder.value = '请输入是否上架';
-            break
+const checkOrderInfo = async (orderName) => {
+    try {
+        const response = await axios.get('http://localhost:8080/api/order/byOrderName/' + encodeURIComponent(orderName))
+        console.log('Successfully get order by orderName', response);
+        currentOrder.value = response.data.data;
+        activeDialog.value = 'order';
+        dialogVisible.value = true;
+    } catch (error) {
+        console.log('Failed to get order by orderName', error);
+        ElMessage({
+            message: '获取订单信息失败',
+            type: 'error',
+        })
     }
 }
-const createProduct = () => {
-    router.push({
-        path: '/createProduct',
-    })
+
+const checkBuyerInfo = async (userName) => {
+    try {
+        const response = await axios.get('http://localhost:8080/api/user/byUserName/' + encodeURIComponent(userName))
+        console.log('Successfully get buyer by userName', response);
+        currentBuyer.value = response.data.data;
+        activeDialog.value = 'buyer';
+        dialogVisible.value = true;
+    } catch (error) {
+        console.log('Failed to get buyer by userName', error);
+        ElMessage({
+            message: '获取买家信息失败',
+            type: 'error',
+        })
+    }
 }
 
-const editButtonPressed = (deliveryId) => {
-    router.push({
-        path: '/editDelivery',
-        query: {
-            deliveryId: deliveryId
-        }
-    })
+const showOrderDialog = (delivery) => {
+    if (delivery.order && delivery.order.orderName) {
+        checkOrderInfo(delivery.order.orderName);
+    } else {
+        ElMessage({
+            message: '该物流没有订单信息',
+            type: 'warning',
+        })
+    }
 }
 
-const form = ref({
-  orderName: '',
-  userName: '',
-  totalAmount: 0.0,
-  orderStatus: '',
-  paymentMethod: '',
-  createTime: '',
-  goodName: '',
-  goodQuantity: 0
-})
-const dialog = ref(false)
-const cancelForm = () => {
-  dialog.value = false
+const showBuyerDialog = (delivery) => {
+    if (delivery.order && delivery.order.userName) {
+        checkBuyerInfo(delivery.order.userName);
+    } else {
+        ElMessage({
+            message: '该物流没有买家信息',
+            type: 'warning',
+        })
+    }
 }
 
-const checkOrderInfo = (order) => {
-    form.value.orderName = order.orderName
-    form.value.userName = order.userName
-    form.value.totalAmount = order.totalAmount
-    form.value.orderStatus = order.orderStatus
-    form.value.paymentMethod = order.paymentMethod
-    form.value.createTime = order.createTime
-    form.value.goodName = order.goodName
-    form.value.goodQuantity = order.goodQuantity
-    dialog.value = true
+const formatTime = (time) => {
+    return time || '未记录';
 }
+
+// 打开订单选择对话框
+const openOrderDialog = () => {
+  orderDialogVisible.value = true;
+  getAllOrders();
+}
+
+// 打开买家选择对话框
+const openBuyerDialog = () => {
+  buyerDialogVisible.value = true;
+  getAllBuyers();
+}
+
+// 选择订单
+const selectOrder = (order) => {
+  selectedOrder.value = order;
+  searchConditions.value.orderName = order.orderName;
+  orderDialogVisible.value = false;
+}
+
+// 选择买家
+const selectBuyer = (buyer) => {
+  selectedBuyer.value = buyer;
+  searchConditions.value.userName = buyer.userName;
+  buyerDialogVisible.value = false;
+}
+
+// 过滤订单列表
+const filteredOrders = computed(() => {
+  if (!orderSearchKeyword.value) {
+    return allOrders.value;
+  }
+  return allOrders.value.filter(order => 
+    order.orderName.toLowerCase().includes(orderSearchKeyword.value.toLowerCase()) ||
+    order.userName.toLowerCase().includes(orderSearchKeyword.value.toLowerCase()) ||
+    order.goodName.toLowerCase().includes(orderSearchKeyword.value.toLowerCase())
+  );
+});
+
+// 过滤买家列表
+const filteredBuyers = computed(() => {
+  if (!buyerSearchKeyword.value) {
+    return allBuyers.value;
+  }
+  return allBuyers.value.filter(buyer => 
+    buyer.userName.toLowerCase().includes(buyerSearchKeyword.value.toLowerCase()) ||
+    buyer.phone.includes(buyerSearchKeyword.value) ||
+    buyer.email.toLowerCase().includes(buyerSearchKeyword.value.toLowerCase())
+  );
+});
 
 </script>
 
 <template>
-        <p>{{ form }}</p>
-    <h1>配送管理</h1>
+    <h1>物流管理</h1>
     <el-space wrap direction="vertical">
-        <el-space warp direction="horizontal">
-            <el-select
-                v-model="searchKind"
-                placeholder="筛选条件"
-                size="default"
-                style="width: 100px"
-                @change="updateAutoCompletePlaceHolder"
-                >
-                <el-option
-                    v-for="item in searchOptions"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                />
-            </el-select>
-            <el-autocomplete
-                v-model="searchKey"
-                :fetch-suggestions="querySearch"
-                :trigger-on-focus="false"
-                class="inline-input w-50"
-                :placeholder="autocompletePlaceHolder"
-                @select="handleSelect"
-            />
-            <el-button @click="search" type="primary">查询</el-button>
-            <el-button @click="resetSearch" type="success">重置</el-button>
-            <el-button @click="createProduct" type="warning">新增</el-button>
-        </el-space>
-        <div v-if="numberOfDelivery == 0">
+        <!-- 多条件搜索区域 -->
+        <el-card class="search-card">
+            <template #header>
+                <div class="card-header">
+                    <span>搜索条件</span>
+                </div>
+            </template>
+            <el-form :model="searchConditions" label-width="80px" inline>
+                <el-form-item label="物流ID">
+                    <el-autocomplete
+                        v-model="searchConditions.deliveryId"
+                        :fetch-suggestions="queryDeliveryId"
+                        placeholder="请输入物流ID"
+                        clearable
+                        style="width: 200px"
+                        :trigger-on-focus="false"
+                    />
+                </el-form-item>
+                <el-form-item label="订单号">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <el-input
+                            v-model="searchConditions.orderName"
+                            placeholder="已选择的订单"
+                            readonly
+                            style="width: 150px"
+                        />
+                        <el-button @click="openOrderDialog" type="primary" plain>
+                            选择订单
+                        </el-button>
+                        <el-button 
+                            v-if="searchConditions.orderName" 
+                            @click="searchConditions.orderName = ''" 
+                            type="danger" 
+                            plain
+                        >
+                            清空
+                        </el-button>
+                    </div>
+                </el-form-item>
+                <el-form-item label="买家">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <el-input
+                            v-model="searchConditions.userName"
+                            placeholder="已选择的买家"
+                            readonly
+                            style="width: 150px"
+                        />
+                        <el-button @click="openBuyerDialog" type="primary" plain>
+                            选择买家
+                        </el-button>
+                        <el-button 
+                            v-if="searchConditions.userName" 
+                            @click="searchConditions.userName = ''" 
+                            type="danger" 
+                            plain
+                        >
+                            清空
+                        </el-button>
+                    </div>
+                </el-form-item>
+                <el-form-item label="快递公司">
+                    <el-autocomplete
+                        v-model="searchConditions.expressCompany"
+                        :fetch-suggestions="queryExpressCompany"
+                        placeholder="请输入快递公司"
+                        clearable
+                        style="width: 200px"
+                        :trigger-on-focus="false"
+                    />
+                </el-form-item>
+                <el-form-item>
+                    <el-button @click="search" type="primary">查询</el-button>
+                    <el-button @click="resetSearch" type="success">重置</el-button>
+                    <el-button @click="createDelivery()" type="warning">新增</el-button>
+                </el-form-item>
+            </el-form>
+        </el-card>
+        
+        <div v-if="numberOfDeliveries == 0">
             <h1>没有物流记录</h1>
         </div>
         <div v-else>
             <el-space wrap direction="vertical">
                 <div v-for="(delivery, index) in paginatedDeliveries" :key="delivery.deliveryId">
-                    <p>{{ delivery }}</p>
+                    <!-- <p>{{ delivery }}</p> -->
                     <el-descriptions
-                        direction="vertical"
+                        class="delivery-descriptions"
+                        :column="4"
+                        size="default"
                         border
-                        style="margin-top: 20px"
-                        :column="5"
-                        class="product-descriptions"
                     >
-                        <el-descriptions-item
-                        :rowspan="3"
-                        :width="140"
-                        label="承运公司"
-                        align="center"
-                        >
-                        <el-image
-                            style="width: 100px; height: 100px"
-                            :src="`http://localhost:8080/uploads/userImage/${delivery.expressCompany}.jpg?t=${Date.now()}`"
-                        >
-                        <template #error>
-                            <br><br>
-                            未上传
-                        </template>
-                        </el-image>
-                        </el-descriptions-item>
-                        <el-descriptions-item label="物流号">{{ delivery.deliveryId }}</el-descriptions-item>
-                        <el-descriptions-item label="物流公司">
-                            <div>
-                                <div v-if="delivery.expressCompany == 'upfg'">
-                                    <el-tag size="default">顺丰物流</el-tag>
+                        <el-descriptions-item>
+                            <template #label>
+                                <div class="cell-item">
+                                    <el-icon></el-icon>
+                                    物流ID
                                 </div>
-                                <div v-else-if="order.paymentMethod == 'jyds'">
-                                    <el-tag size="success">京东物流</el-tag>
-                                </div>
-                            </div>
+                            </template>
+                            {{ delivery.deliveryId }}
                         </el-descriptions-item>
-                        <el-descriptions-item label="承运订单">
+                        <el-descriptions-item>
+                            <template #label>
+                                <div class="cell-item">
+                                    <el-icon></el-icon>
+                                    订单号
+                                </div>
+                            </template>
                             {{ delivery.order.orderName }}
-                            <el-button @click="checkOrderInfo(delivery.order)" type="primary" plain size="small">
-                                点击查看
-                            </el-button>
                         </el-descriptions-item>
-                        <el-descriptions-item label="物流状态">
+                        <el-descriptions-item>
+                            <template #label>
+                                <div class="cell-item">
+                                    <el-icon></el-icon>
+                                    买家
+                                </div>
+                            </template>
+                            {{ delivery.order.userName }}
+                        </el-descriptions-item>
+                        <el-descriptions-item>
+                            <template #label>
+                                <div class="cell-item">
+                                    <el-icon></el-icon>
+                                    快递公司
+                                </div>
+                            </template>
+                            {{ delivery.expressCompany }}
+                        </el-descriptions-item>
+                        <el-descriptions-item>
+                            <template #label>
+                                <div class="cell-item">
+                                    <el-icon></el-icon>
+                                    发货时间
+                                </div>
+                            </template>
+                            {{ formatTime(delivery.shippedTime) }}
+                        </el-descriptions-item>
+                        <el-descriptions-item>
+                            <template #label>
+                                <div class="cell-item">
+                                    <el-icon></el-icon>
+                                    送达时间
+                                </div>
+                            </template>
+                            {{ formatTime(delivery.deliveredTime) }}
+                        </el-descriptions-item>
+                        <el-descriptions-item>
+                            <template #label>
+                                <div class="cell-item">
+                                    <el-icon></el-icon>
+                                    商品信息
+                                </div>
+                            </template>
+                            {{ delivery.order.goodName }} × {{ delivery.order.goodQuantity }}
+                        </el-descriptions-item>
+                        <el-descriptions-item>
+                            <template #label>
+                                <div class="cell-item">
+                                    <el-icon></el-icon>
+                                    订单状态
+                                </div>
+                            </template>
                             <div>
                                 <div v-if="delivery.order.orderStatus == 'UnPaid'">
                                     <el-tag size="danger">待付款</el-tag>
@@ -433,31 +532,23 @@ const checkOrderInfo = (order) => {
                                 </div>
                             </div>
                         </el-descriptions-item>
-                        <el-descriptions-item label="发货日期">
-                            <div v-if="delivery.shippedTime == null">
-                                未发货
-                            </div>
-                            <div v-else>
-                                {{ delivery.shippedTime }}
-                            </div>
-                        </el-descriptions-item>
-                        <el-descriptions-item label="签收日期">
-                            <div v-if="delivery.deliveredTime == null">
-                                未签收
-                            </div>
-                            <div v-else>
-                                {{ delivery.deliveredTime }}
-                            </div>
-                        </el-descriptions-item>
-                        <el-descriptions-item label="操作">
-                            <el-button type="primary" plain @click="editButtonPressed(delivery.deliveryId)">修改</el-button>
-                            <el-button type="danger" plain @click="deleteButtonPressed(delivery.productName)">删除</el-button>
+                        <el-descriptions-item>
+                            <template #label>
+                                <div class="cell-item">
+                                    <el-icon></el-icon>
+                                    操作
+                                </div>
+                            </template>
+                            <el-button @click="showOrderDialog(delivery)" type="success" plain>查看订单</el-button>
+                            <el-button @click="showBuyerDialog(delivery)" type="success" plain>查看买家</el-button>
+                            <el-button @click="editInfoPressed(delivery.deliveryId)" type="primary" plain>修改</el-button>
+                            <el-button @click="deleteButtonPressed(delivery.deliveryId)" type="danger" plain>删除</el-button>
                         </el-descriptions-item>
                     </el-descriptions>
                 </div>
                 <el-pagination
                     v-model:current-page="currentPage"
-                    :page-size="3"
+                    :page-size="pageSize"
                     layout="prev, pager, next"
                     :total="filteredDeliveryList.length"
                     background
@@ -465,79 +556,244 @@ const checkOrderInfo = (order) => {
             </el-space>
         </div>
     </el-space>
-    
-    <el-drawer
-    v-model="dialog"
-    title="订单信息"
-    direction="ltr"
-    class="demo-drawer"
-    size="22%"
+
+    <!-- 订单选择对话框 -->
+    <el-dialog 
+        title="选择订单" 
+        v-model="orderDialogVisible" 
+        width="900px"
+        :before-close="() => orderDialogVisible = false"
     >
-        <div class="demo-drawer__content">
-        <el-form :model="form" size="default">
-            <el-form-item label="订单号" label-width="70px">
-                {{ form.orderName }}
-            </el-form-item>
-            <el-form-item label="买方" label-width="70px">
-                {{ form.userName }}
-            </el-form-item>
-            <el-form-item label="商品名" label-width="70px">
-                {{ form.goodName }}
-            </el-form-item>
-            <el-form-item label="商品数量" label-width="70px">
-                {{ form.goodQuantity }}
-            </el-form-item>
-            <el-form-item label="总金额" label-width="70px">
-                {{ form.totalAmount }}
-            </el-form-item>
-            <el-form-item label="下单日期" label-width="70px">
-                {{ form.createTime }}
-            </el-form-item>
-            <el-form-item label="支付方式" label-width="70px">
-                <div>
-                    <div v-if="form.paymentMethod == 'AliPay'">
-                        <el-tag size="default">支付宝支付</el-tag>
-                    </div>
-                    <div v-else-if="form.paymentMethod == 'WechatPay'">
-                        <el-tag size="success">微信支付</el-tag>
-                    </div>
-                </div>
-            </el-form-item>
-            <el-form-item label="订单状态" label-width="70px">
-                <div>
-                    <div v-if="form.orderStatus == 'UnPaid'">
-                        <el-tag size="danger">待付款</el-tag>
-                    </div>
-                    <div v-else-if="form.orderStatus == 'NotDispatched'">
-                        <el-tag size="warning">待发货</el-tag>
-                    </div>
-                    <div v-else-if="form.orderStatus == 'Delivering'">
-                        <el-tag size="default">派送中</el-tag>
-                    </div>
-                    <div v-else-if="form.orderStatus == 'Delivered'">
-                        <el-tag size="success">已送达</el-tag>
-                    </div>
-                    <div v-else-if="form.orderStatus == 'Done'">
-                        <el-tag size="info">已完成</el-tag>
-                    </div>
-                </div>
-            </el-form-item>
-        </el-form>
-        <div class="demo-drawer__footer">
-            <el-button type="primary" plain @click="cancelForm">返回</el-button>
+        <div style="margin-bottom: 20px;">
+            <el-input
+                v-model="orderSearchKeyword"
+                placeholder="搜索订单（订单号、买家、商品名）"
+                clearable
+                style="width: 100%"
+            >
+                <template #prefix>
+                    <el-icon><search /></el-icon>
+                </template>
+            </el-input>
         </div>
+        
+        <div style="max-height: 400px; overflow-y: auto;">
+            <el-table 
+                :data="filteredOrders" 
+                style="width: 100%"
+                @row-click="selectOrder"
+                :row-class-name="() => 'clickable-row'"
+            >
+                <el-table-column prop="orderName" label="订单号" width="150" />
+                <el-table-column prop="userName" label="买家" width="120" />
+                <el-table-column prop="goodName" label="商品名" width="150" />
+                <el-table-column prop="goodQuantity" label="数量" width="80" />
+                <el-table-column prop="totalAmount" label="总金额" width="100" />
+                <el-table-column label="订单状态" width="100">
+                    <template #default="{ row }">
+                        <el-tag 
+                            :type="row.orderStatus === 'UnPaid' ? 'danger' : 
+                                   row.orderStatus === 'NotDispatched' ? 'warning' : 
+                                   row.orderStatus === 'Delivering' ? 'default' : 
+                                   row.orderStatus === 'Delivered' ? 'success' : 'info'"
+                        >
+                            {{ row.orderStatus === 'UnPaid' ? '待付款' : 
+                               row.orderStatus === 'NotDispatched' ? '待发货' : 
+                               row.orderStatus === 'Delivering' ? '派送中' : 
+                               row.orderStatus === 'Delivered' ? '已送达' : '已完成' }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="createTime" label="下单时间" width="120" />
+                <el-table-column label="操作" width="100" fixed="right">
+                    <template #default="{ row }">
+                        <el-button 
+                            @click.stop="selectOrder(row)" 
+                            type="primary" 
+                            size="small"
+                        >
+                            选择
+                        </el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
         </div>
-    </el-drawer>
+        
+        <template #footer>
+            <div class="dialog-footer">
+                <el-button @click="orderDialogVisible = false">取消</el-button>
+            </div>
+        </template>
+    </el-dialog>
+    
+    <!-- 买家选择对话框 -->
+    <el-dialog 
+        title="选择买家" 
+        v-model="buyerDialogVisible" 
+        width="800px"
+        :before-close="() => buyerDialogVisible = false"
+    >
+        <div style="margin-bottom: 20px;">
+            <el-input
+                v-model="buyerSearchKeyword"
+                placeholder="搜索买家（用户名、手机号、邮箱）"
+                clearable
+                style="width: 100%"
+            >
+                <template #prefix>
+                    <el-icon><search /></el-icon>
+                </template>
+            </el-input>
+        </div>
+        
+        <div style="max-height: 400px; overflow-y: auto;">
+            <el-table 
+                :data="filteredBuyers" 
+                style="width: 100%"
+                @row-click="selectBuyer"
+                :row-class-name="() => 'clickable-row'"
+            >
+                <el-table-column prop="userName" label="用户名" width="120" />
+                <el-table-column prop="phone" label="手机号" width="130" />
+                <el-table-column prop="email" label="邮箱" width="180" />
+                <el-table-column prop="region" label="地区" width="100" />
+                <el-table-column label="性别" width="80">
+                    <template #default="{ row }">
+                        <span v-if="row.gender === 'male'">男</span>
+                        <span v-else-if="row.gender === 'female'">女</span>
+                        <span v-else>未知</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="birthday" label="生日" width="100" />
+                <el-table-column label="操作" width="100" fixed="right">
+                    <template #default="{ row }">
+                        <el-button 
+                            @click.stop="selectBuyer(row)" 
+                            type="primary" 
+                            size="small"
+                        >
+                            选择
+                        </el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+        </div>
+        
+        <template #footer>
+            <div class="dialog-footer">
+                <el-button @click="buyerDialogVisible = false">取消</el-button>
+            </div>
+        </template>
+    </el-dialog>
+    
+    <!-- 订单和买家详情对话框 -->
+    <el-dialog 
+        v-model="dialogVisible"
+        :title="activeDialog === 'order' ? '订单详情' : '买家信息'"
+        width="500"
+    >
+        <div v-if="activeDialog === 'order' && currentOrder">
+            <el-descriptions :column="1" border>
+                <el-descriptions-item label="订单号">{{ currentOrder.orderName }}</el-descriptions-item>
+                <el-descriptions-item label="买家">{{ currentOrder.userName }}</el-descriptions-item>
+                <el-descriptions-item label="商品名">{{ currentOrder.goodName }}</el-descriptions-item>
+                <el-descriptions-item label="商品数量">{{ currentOrder.goodQuantity }}</el-descriptions-item>
+                <el-descriptions-item label="总金额">{{ currentOrder.totalAmount }}元</el-descriptions-item>
+                <el-descriptions-item label="订单状态">
+                    <el-tag 
+                        :type="currentOrder.orderStatus === 'UnPaid' ? 'danger' : 
+                               currentOrder.orderStatus === 'NotDispatched' ? 'warning' : 
+                               currentOrder.orderStatus === 'Delivering' ? 'default' : 
+                               currentOrder.orderStatus === 'Delivered' ? 'success' : 'info'"
+                    >
+                        {{ currentOrder.orderStatus === 'UnPaid' ? '待付款' : 
+                           currentOrder.orderStatus === 'NotDispatched' ? '待发货' : 
+                           currentOrder.orderStatus === 'Delivering' ? '派送中' : 
+                           currentOrder.orderStatus === 'Delivered' ? '已送达' : '已完成' }}
+                    </el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="支付方式">
+                    <el-tag :type="currentOrder.paymentMethod === 'AliPay' ? 'default' : 'success'">
+                        {{ currentOrder.paymentMethod === 'AliPay' ? '支付宝支付' : '微信支付' }}
+                    </el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="下单时间">{{ currentOrder.createTime }}</el-descriptions-item>
+            </el-descriptions>
+        </div>
+        
+        <div v-else-if="activeDialog === 'buyer' && currentBuyer">
+            <el-descriptions :column="1" border>
+                <el-descriptions-item label="用户ID">{{ currentBuyer.userId }}</el-descriptions-item>
+                <el-descriptions-item label="用户名">{{ currentBuyer.userName }}</el-descriptions-item>
+                <el-descriptions-item label="邮箱">
+                    <el-link type="primary" :href="'mailto:' + currentBuyer.email">
+                        {{ currentBuyer.email }}
+                    </el-link>
+                </el-descriptions-item>
+                <el-descriptions-item label="性别">
+                    <el-tag :type="currentBuyer.gender === 'male' ? 'primary' : (currentBuyer.gender === 'female' ? 'danger' : 'info')">
+                        {{ currentBuyer.gender === 'male' ? '男' : currentBuyer.gender === 'female' ? '女' : '未知' }}
+                    </el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="生日">{{ currentBuyer.birthday || '未设置' }}</el-descriptions-item>
+                <el-descriptions-item label="手机号">
+                    <el-link type="primary" :href="'tel:' + currentBuyer.phone">
+                        {{ currentBuyer.phone }}
+                    </el-link>
+                </el-descriptions-item>
+                <el-descriptions-item label="地区">{{ currentBuyer.region || '未设置' }}</el-descriptions-item>
+                <el-descriptions-item label="角色">
+                    <el-tag :type="currentBuyer.role ? 'success' : 'warning'">
+                        {{ currentBuyer.role || '普通用户' }}
+                    </el-tag>
+                </el-descriptions-item>
+            </el-descriptions>
+            <div style="margin-top: 20px; text-align: center;">
+                <el-image 
+                    style="width: 200px; height: 200px"
+                    :src="`http://localhost:8080/uploads/userImage/${currentBuyer.userName}.jpg`" 
+                    fit="contain"
+                />
+            </div>
+        </div>
+        
+        <div v-else>
+            正在加载信息...
+        </div>
+        
+        <template #footer>
+            <div class="dialog-footer">
+                <el-button @click="dialogVisible = false">关闭</el-button>
+            </div>
+        </template>
+    </el-dialog>
 </template>
 
 <style>
-    .product-descriptions {
+    .delivery-descriptions {
         width: 1000px;
     }
-    /* .demo-drawer__content {
-        width: 1000px;
-    } */
-    .demo-drawer__footer {
-        margin-left: 50px;
+    
+    .search-card {
+        width: 100%;
+        margin-bottom: 20px;
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .clickable-row {
+        cursor: pointer;
+    }
+    
+    .clickable-row:hover {
+        background-color: #f5f7fa;
+    }
+    
+    .dialog-footer {
+        text-align: right;
     }
 </style>

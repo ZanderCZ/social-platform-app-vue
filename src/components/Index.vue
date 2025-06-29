@@ -6,7 +6,7 @@
     @select="handleSelect"
     >
     <el-menu-item class="mainPage" index="1">主页</el-menu-item>
-    <el-sub-menu index="2">
+    <!-- <el-sub-menu index="2">
       <template #title>商品列表</template>
       <el-menu-item index="2-1">item one</el-menu-item>
       <el-menu-item index="2-2">item two</el-menu-item>
@@ -17,7 +17,7 @@
         <el-menu-item index="2-4-2">item two</el-menu-item>
         <el-menu-item index="2-4-3">item three</el-menu-item>
       </el-sub-menu>
-    </el-sub-menu>
+    </el-sub-menu> -->
     <div v-if="userName == 'admin'">
       <el-sub-menu index="3">
         <template #title>管理员</template>
