@@ -1,6 +1,6 @@
 <script setup>
 import axios from 'axios';
-import { onMounted, ref, computed } from 'vue';
+import { onMounted, ref, computed, reactive } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
@@ -29,11 +29,50 @@ const allOrders = ref([]);
 const selectedOrder = ref(null);
 const orderSearchKeyword = ref('');
 
+// 订单多条件查询相关
+const orderSearchForm = reactive({
+  orderName: '',
+  userName: '',
+  goodName: '',
+  orderStatus: '',
+  paymentMethod: '',
+  createTimeRange: [],
+  isAdvancedSearch: false
+});
+
+// 订单状态选项
+const orderStatusOptions = ref([
+  { label: '待付款', value: 'UnPaid' },
+  { label: '待发货', value: 'NotDispatched' },
+  { label: '派送中', value: 'Delivering' },
+  { label: '已送达', value: 'Delivered' },
+  { label: '已完成', value: 'Done' }
+]);
+
+// 支付方式选项
+const paymentMethodOptions = ref([
+  { label: '支付宝支付', value: 'AliPay' },
+  { label: '微信支付', value: 'WechatPay' }
+]);
+
 // 买家选择对话框相关
 const buyerDialogVisible = ref(false);
 const allBuyers = ref([]);
 const selectedBuyer = ref(null);
 const buyerSearchKeyword = ref('');
+
+// 多条件查询相关
+const buyerSearchForm = reactive({
+  userName: '',
+  phone: '',
+  email: '',
+  region: '',
+  createTimeRange: [],
+  isAdvancedSearch: false
+});
+
+// 地区选项
+const regionOptions = ref([]);
 
 const getDeliveryCount = async () => {
     // 获取物流数量
@@ -79,6 +118,10 @@ const getAllBuyers = async () => {
     const response = await axios.get('http://localhost:8080/api/user/all');
     console.log('Get all buyers success', response);
     allBuyers.value = response.data.data;
+    
+    // 提取地区选项
+    const regions = [...new Set(allBuyers.value.map(buyer => buyer.region).filter(region => region))];
+    regionOptions.value = regions.map(region => ({ label: region, value: region }));
   } catch (error) {
     console.log('Failed to get buyers', error);
     throw error;
@@ -326,27 +369,168 @@ const selectBuyer = (buyer) => {
 
 // 过滤订单列表
 const filteredOrders = computed(() => {
-  if (!orderSearchKeyword.value) {
-    return allOrders.value;
+  let list = allOrders.value;
+  
+  // 简单搜索模式
+  if (!orderSearchForm.isAdvancedSearch && orderSearchKeyword.value) {
+    const keyword = orderSearchKeyword.value.toLowerCase();
+    list = list.filter(order => 
+      order.orderName.toLowerCase().includes(keyword) ||
+      order.userName.toLowerCase().includes(keyword) ||
+      order.goodName.toLowerCase().includes(keyword)
+    );
   }
-  return allOrders.value.filter(order => 
-    order.orderName.toLowerCase().includes(orderSearchKeyword.value.toLowerCase()) ||
-    order.userName.toLowerCase().includes(orderSearchKeyword.value.toLowerCase()) ||
-    order.goodName.toLowerCase().includes(orderSearchKeyword.value.toLowerCase())
-  );
+  
+  // 高级搜索模式
+  if (orderSearchForm.isAdvancedSearch) {
+    // 订单号搜索
+    if (orderSearchForm.orderName) {
+      list = list.filter(order => 
+        order.orderName.toLowerCase().includes(orderSearchForm.orderName.toLowerCase())
+      );
+    }
+    
+    // 买家搜索
+    if (orderSearchForm.userName) {
+      list = list.filter(order => 
+        order.userName.toLowerCase().includes(orderSearchForm.userName.toLowerCase())
+      );
+    }
+    
+    // 商品名搜索
+    if (orderSearchForm.goodName) {
+      list = list.filter(order => 
+        order.goodName.toLowerCase().includes(orderSearchForm.goodName.toLowerCase())
+      );
+    }
+    
+    // 订单状态筛选
+    if (orderSearchForm.orderStatus) {
+      list = list.filter(order => 
+        order.orderStatus === orderSearchForm.orderStatus
+      );
+    }
+    
+    // 支付方式筛选
+    if (orderSearchForm.paymentMethod) {
+      list = list.filter(order => 
+        order.paymentMethod === orderSearchForm.paymentMethod
+      );
+    }
+    
+    // 下单时间范围筛选
+    if (orderSearchForm.createTimeRange && orderSearchForm.createTimeRange.length === 2) {
+      const startDate = new Date(orderSearchForm.createTimeRange[0]);
+      const endDate = new Date(orderSearchForm.createTimeRange[1]);
+      endDate.setHours(23, 59, 59, 999); // 设置为当天结束时间
+      
+      list = list.filter(order => {
+        const createTime = new Date(order.createTime);
+        return createTime >= startDate && createTime <= endDate;
+      });
+    }
+  }
+  
+  return list;
 });
 
 // 过滤买家列表
 const filteredBuyers = computed(() => {
-  if (!buyerSearchKeyword.value) {
-    return allBuyers.value;
+  let list = allBuyers.value;
+  
+  // 简单搜索模式
+  if (!buyerSearchForm.isAdvancedSearch && buyerSearchKeyword.value) {
+    const keyword = buyerSearchKeyword.value.toLowerCase();
+    list = list.filter(buyer => 
+      buyer.userName.toLowerCase().includes(keyword) ||
+      buyer.phone.includes(keyword) ||
+      buyer.email.toLowerCase().includes(keyword) ||
+      (buyer.region && buyer.region.toLowerCase().includes(keyword))
+    );
   }
-  return allBuyers.value.filter(buyer => 
-    buyer.userName.toLowerCase().includes(buyerSearchKeyword.value.toLowerCase()) ||
-    buyer.phone.includes(buyerSearchKeyword.value) ||
-    buyer.email.toLowerCase().includes(buyerSearchKeyword.value.toLowerCase())
-  );
+  
+  // 高级搜索模式
+  if (buyerSearchForm.isAdvancedSearch) {
+    // 用户名搜索
+    if (buyerSearchForm.userName) {
+      list = list.filter(buyer => 
+        buyer.userName.toLowerCase().includes(buyerSearchForm.userName.toLowerCase())
+      );
+    }
+    
+    // 手机号搜索
+    if (buyerSearchForm.phone) {
+      list = list.filter(buyer => 
+        buyer.phone.includes(buyerSearchForm.phone)
+      );
+    }
+    
+    // 邮箱搜索
+    if (buyerSearchForm.email) {
+      list = list.filter(buyer => 
+        buyer.email.toLowerCase().includes(buyerSearchForm.email.toLowerCase())
+      );
+    }
+    
+    // 地区筛选
+    if (buyerSearchForm.region) {
+      list = list.filter(buyer => 
+        buyer.region === buyerSearchForm.region
+      );
+    }
+    
+    // 注册时间范围筛选
+    if (buyerSearchForm.createTimeRange && buyerSearchForm.createTimeRange.length === 2) {
+      const startDate = new Date(buyerSearchForm.createTimeRange[0]);
+      const endDate = new Date(buyerSearchForm.createTimeRange[1]);
+      endDate.setHours(23, 59, 59, 999); // 设置为当天结束时间
+      
+      list = list.filter(buyer => {
+        const createTime = new Date(buyer.createTime);
+        return createTime >= startDate && createTime <= endDate;
+      });
+    }
+  }
+  
+  return list;
 });
+
+// 重置买家搜索条件
+const resetBuyerSearch = () => {
+  buyerSearchForm.userName = '';
+  buyerSearchForm.phone = '';
+  buyerSearchForm.email = '';
+  buyerSearchForm.region = '';
+  buyerSearchForm.createTimeRange = [];
+  buyerSearchKeyword.value = '';
+}
+
+// 切换高级搜索模式
+const toggleAdvancedSearch = () => {
+  buyerSearchForm.isAdvancedSearch = !buyerSearchForm.isAdvancedSearch;
+  if (!buyerSearchForm.isAdvancedSearch) {
+    resetBuyerSearch();
+  }
+}
+
+// 重置订单搜索条件
+const resetOrderSearch = () => {
+  orderSearchForm.orderName = '';
+  orderSearchForm.userName = '';
+  orderSearchForm.goodName = '';
+  orderSearchForm.orderStatus = '';
+  orderSearchForm.paymentMethod = '';
+  orderSearchForm.createTimeRange = [];
+  orderSearchKeyword.value = '';
+}
+
+// 切换订单高级搜索模式
+const toggleOrderAdvancedSearch = () => {
+  orderSearchForm.isAdvancedSearch = !orderSearchForm.isAdvancedSearch;
+  if (!orderSearchForm.isAdvancedSearch) {
+    resetOrderSearch();
+  }
+}
 
 </script>
 
@@ -561,20 +745,118 @@ const filteredBuyers = computed(() => {
     <el-dialog 
         title="选择订单" 
         v-model="orderDialogVisible" 
-        width="900px"
+        width="1000px"
         :before-close="() => orderDialogVisible = false"
     >
+        <!-- 搜索区域 -->
         <div style="margin-bottom: 20px;">
-            <el-input
-                v-model="orderSearchKeyword"
-                placeholder="搜索订单（订单号、买家、商品名）"
-                clearable
-                style="width: 100%"
-            >
-                <template #prefix>
-                    <el-icon><search /></el-icon>
-                </template>
-            </el-input>
+            <!-- 简单搜索模式 -->
+            <div v-if="!orderSearchForm.isAdvancedSearch" style="display: flex; gap: 16px; align-items: center;">
+                <el-input
+                    v-model="orderSearchKeyword"
+                    placeholder="快速搜索（订单号、买家、商品名）"
+                    clearable
+                    style="flex: 1"
+                >
+                    <template #prefix>
+                        <el-icon><Search /></el-icon>
+                    </template>
+                </el-input>
+                <el-button @click="toggleOrderAdvancedSearch" type="primary" plain>
+                    高级搜索
+                </el-button>
+            </div>
+            
+            <!-- 高级搜索模式 -->
+            <div v-if="orderSearchForm.isAdvancedSearch">
+                <el-form :model="orderSearchForm" label-width="80px" inline>
+                    <el-form-item label="订单号">
+                        <el-input
+                            v-model="orderSearchForm.orderName"
+                            placeholder="请输入订单号"
+                            clearable
+                            style="width: 150px"
+                        />
+                    </el-form-item>
+                    
+                    <el-form-item label="买家">
+                        <el-input
+                            v-model="orderSearchForm.userName"
+                            placeholder="请输入买家"
+                            clearable
+                            style="width: 120px"
+                        />
+                    </el-form-item>
+                    
+                    <el-form-item label="商品名">
+                        <el-input
+                            v-model="orderSearchForm.goodName"
+                            placeholder="请输入商品名"
+                            clearable
+                            style="width: 150px"
+                        />
+                    </el-form-item>
+                    
+                    <el-form-item label="订单状态">
+                        <el-select
+                            v-model="orderSearchForm.orderStatus"
+                            placeholder="请选择状态"
+                            clearable
+                            style="width: 120px"
+                        >
+                            <el-option
+                                v-for="option in orderStatusOptions"
+                                :key="option.value"
+                                :label="option.label"
+                                :value="option.value"
+                            />
+                        </el-select>
+                    </el-form-item>
+                    
+                    <el-form-item label="支付方式">
+                        <el-select
+                            v-model="orderSearchForm.paymentMethod"
+                            placeholder="请选择支付方式"
+                            clearable
+                            style="width: 140px"
+                        >
+                            <el-option
+                                v-for="option in paymentMethodOptions"
+                                :key="option.value"
+                                :label="option.label"
+                                :value="option.value"
+                            />
+                        </el-select>
+                    </el-form-item>
+                    
+                    <el-form-item label="下单时间">
+                        <el-date-picker
+                            v-model="orderSearchForm.createTimeRange"
+                            type="daterange"
+                            range-separator="至"
+                            start-placeholder="开始日期"
+                            end-placeholder="结束日期"
+                            format="YYYY-MM-DD"
+                            value-format="YYYY-MM-DD"
+                            style="width: 240px"
+                        />
+                    </el-form-item>
+                </el-form>
+                
+                <div style="margin-top: 12px; display: flex; gap: 12px;">
+                    <el-button @click="resetOrderSearch" type="info" plain>
+                        重置条件
+                    </el-button>
+                    <el-button @click="toggleOrderAdvancedSearch" type="primary" plain>
+                        简单搜索
+                    </el-button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 搜索结果统计 -->
+        <div style="margin-bottom: 16px; color: #909399; font-size: 14px;">
+            共找到 {{ filteredOrders.length }} 个订单
         </div>
         
         <div style="max-height: 400px; overflow-y: auto;">
@@ -630,20 +912,102 @@ const filteredBuyers = computed(() => {
     <el-dialog 
         title="选择买家" 
         v-model="buyerDialogVisible" 
-        width="800px"
+        width="1000px"
         :before-close="() => buyerDialogVisible = false"
     >
+        <!-- 搜索区域 -->
         <div style="margin-bottom: 20px;">
-            <el-input
-                v-model="buyerSearchKeyword"
-                placeholder="搜索买家（用户名、手机号、邮箱）"
-                clearable
-                style="width: 100%"
-            >
-                <template #prefix>
-                    <el-icon><search /></el-icon>
-                </template>
-            </el-input>
+            <!-- 简单搜索模式 -->
+            <div v-if="!buyerSearchForm.isAdvancedSearch" style="display: flex; gap: 16px; align-items: center;">
+                <el-input
+                    v-model="buyerSearchKeyword"
+                    placeholder="快速搜索（用户名、手机号、邮箱、地区）"
+                    clearable
+                    style="flex: 1"
+                >
+                    <template #prefix>
+                        <el-icon><Search /></el-icon>
+                    </template>
+                </el-input>
+                <el-button @click="toggleAdvancedSearch" type="primary" plain>
+                    高级搜索
+                </el-button>
+            </div>
+            
+            <!-- 高级搜索模式 -->
+            <div v-if="buyerSearchForm.isAdvancedSearch">
+                <el-form :model="buyerSearchForm" label-width="80px" inline>
+                    <el-form-item label="用户名">
+                        <el-input
+                            v-model="buyerSearchForm.userName"
+                            placeholder="请输入用户名"
+                            clearable
+                            style="width: 150px"
+                        />
+                    </el-form-item>
+                    
+                    <el-form-item label="手机号">
+                        <el-input
+                            v-model="buyerSearchForm.phone"
+                            placeholder="请输入手机号"
+                            clearable
+                            style="width: 150px"
+                        />
+                    </el-form-item>
+                    
+                    <el-form-item label="邮箱">
+                        <el-input
+                            v-model="buyerSearchForm.email"
+                            placeholder="请输入邮箱"
+                            clearable
+                            style="width: 180px"
+                        />
+                    </el-form-item>
+                    
+                    <el-form-item label="地区">
+                        <el-select
+                            v-model="buyerSearchForm.region"
+                            placeholder="请选择地区"
+                            clearable
+                            style="width: 120px"
+                        >
+                            <el-option
+                                v-for="option in regionOptions"
+                                :key="option.value"
+                                :label="option.label"
+                                :value="option.value"
+                            />
+                        </el-select>
+                    </el-form-item>
+                    
+                    <el-form-item label="注册时间">
+                        <el-date-picker
+                            v-model="buyerSearchForm.createTimeRange"
+                            type="daterange"
+                            range-separator="至"
+                            start-placeholder="开始日期"
+                            end-placeholder="结束日期"
+                            format="YYYY-MM-DD"
+                            value-format="YYYY-MM-DD"
+                            style="width: 240px"
+                        />
+                    </el-form-item>
+                </el-form>
+                
+                <div style="margin-top: 12px; display: flex; gap: 12px;">
+                    <el-button @click="resetBuyerSearch" type="info" plain>
+                        重置条件
+                    </el-button>
+                    <el-button @click="toggleAdvancedSearch" type="primary" plain>
+                        简单搜索
+                    </el-button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 搜索结果统计 -->
+        <div style="margin-bottom: 16px; color: #909399; font-size: 14px;">
+            共找到 {{ filteredBuyers.length }} 个买家
         </div>
         
         <div style="max-height: 400px; overflow-y: auto;">

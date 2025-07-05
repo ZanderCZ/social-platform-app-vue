@@ -127,10 +127,18 @@ onMounted(async () => {
 
 const props = {
   expandTrigger: 'hover',
+  checkStrictly: false, // 只能选择叶子节点
+  emitPath: true, // 返回完整路径
 }
 const chosedCategoryName = ref([])
 const categoryNameChanged = async () => {
-    const targetCategoryName = chosedCategoryName.value[2]
+    // 获取选中的最后一个类别名称（最底层类别）
+    const selectedPath = chosedCategoryName.value;
+    if (!selectedPath || selectedPath.length === 0) {
+        return;
+    }
+    
+    const targetCategoryName = selectedPath[selectedPath.length - 1];
     try {
         const response = await axios.get('http://localhost:8080/api/category/byCategoryName/' + targetCategoryName)
         console.log(response);

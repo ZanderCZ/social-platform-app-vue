@@ -74,20 +74,25 @@ const getAllCategories = async () => {
 const options = ref([])
 // 这个函数纯手敲，完全没有AI，相当复杂
 const setCategoryOptions = async () => {
+    console.log('开始设置类别选项，一级类别数量:', firstClassCategories.value.length)
     // 对于每一个一级类别
     for (const firstClassCategory of firstClassCategories.value) {
+        console.log('处理一级类别:', firstClassCategory.categoryName)
         const secondCategoryOptions = []
         try {
             const response = await axios.get('http://localhost:8080/api/category/getChildById/' + firstClassCategory.categoryId)
-            console.log(response)
+            console.log('获取二级类别响应:', response.data)
             const childrenCategoriesOfFirstClass = response.data.data
+            console.log('二级类别数量:', childrenCategoriesOfFirstClass.length)
             // 对于每一个二级类别
             for (const secondClassCategory of childrenCategoriesOfFirstClass) {
+                console.log('处理二级类别:', secondClassCategory.categoryName)
                 const thirdCategoryOptions = []
                 try {
                     const response = await axios.get('http://localhost:8080/api/category/getChildById/' + secondClassCategory.categoryId)
-                    console.log(response)
+                    console.log('获取三级类别响应:', response.data)
                     const childrenCategoriesOfSecondClass = response.data.data
+                    console.log('三级类别数量:', childrenCategoriesOfSecondClass.length)
                     // 对于每一个三级分类，添加进选项中
                     for (const thirdCategory of childrenCategoriesOfSecondClass) {
                         thirdCategoryOptions.push({
@@ -115,9 +120,55 @@ const setCategoryOptions = async () => {
             children: secondCategoryOptions
         })
     }
+    console.log('最终选项结构:', options.value)
 }
 
 var product = null
+
+// 设置当前商品的类别路径
+const setCurrentCategoryPath = async (categoryId) => {
+    try {
+        console.log('开始设置类别路径，目标类别ID:', categoryId)
+        console.log('当前类别列表:', categoryList.value)
+        
+        // 通过递归查找构建类别路径
+        const buildCategoryPath = (targetId, categories) => {
+            const findCategory = (id) => categories.find(cat => cat.categoryId === id);
+            const targetCategory = findCategory(targetId);
+            
+            console.log('找到目标类别:', targetCategory)
+            
+            if (!targetCategory) return [];
+            
+            const path = [];
+            let currentCategory = targetCategory;
+            
+            // 从目标类别开始，向上查找父类别
+            while (currentCategory) {
+                path.unshift(currentCategory.categoryName);
+                console.log('添加类别到路径:', currentCategory.categoryName)
+                if (currentCategory.categoryParentId === 0) {
+                    break;
+                }
+                currentCategory = findCategory(currentCategory.categoryParentId);
+            }
+            
+            console.log('构建的路径:', path)
+            return path;
+        };
+        
+        const categoryPath = buildCategoryPath(categoryId, categoryList.value);
+        if (categoryPath && categoryPath.length > 0) {
+            chosedCategoryName.value = categoryPath;
+            console.log('设置类别路径完成:', chosedCategoryName.value)
+        } else {
+            console.log('未能构建类别路径')
+        }
+    } catch (error) {
+        console.log('Failed to build category path', error);
+    }
+}
+
 const initProductInfo = async () => {
     try {
         const response = await axios.get('http://localhost:8080/api/product/byProductName/' + passedProductName)
@@ -131,24 +182,39 @@ const initProductInfo = async () => {
         form.productIsOnSale = product.productIsOnSale
         form.productScore = product.productScore
         form.productCategoryId = product.productCategory.categoryId
+        
+        // 设置当前商品的类别路径
+        await setCurrentCategoryPath(product.productCategory.categoryId)
     } catch (error) {
         console.log('Failed to get product info by productName', error);
     }
 }
 
 onMounted(async () => {
+    console.log('开始初始化...')
     await getAllCategories()
+    console.log('获取类别列表完成，类别数量:', categoryList.value.length)
     await setCategoryOptions()
+    console.log('设置类别选项完成，选项数量:', options.value.length)
     await initProductInfo()
+    console.log('初始化商品信息完成')
     imageUrl.value = 'http://localhost:8080/uploads/productImage/' + product.productCoverImageUrl + '.jpg?t=' + Date.now();
 })
 
 const props = {
   expandTrigger: 'hover',
+  checkStrictly: false, // 只能选择叶子节点
+  emitPath: true, // 返回完整路径
 }
 const chosedCategoryName = ref([])
 const categoryNameChanged = async () => {
-    const targetCategoryName = chosedCategoryName.value[2]
+    // 获取选中的最后一个类别名称（最底层类别）
+    const selectedPath = chosedCategoryName.value;
+    if (!selectedPath || selectedPath.length === 0) {
+        return;
+    }
+    
+    const targetCategoryName = selectedPath[selectedPath.length - 1];
     try {
         const response = await axios.get('http://localhost:8080/api/category/byCategoryName/' + targetCategoryName)
         console.log(response);

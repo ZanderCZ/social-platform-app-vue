@@ -26,6 +26,19 @@ const allBuyers = ref([]);
 const selectedBuyer = ref(null);
 const buyerSearchKeyword = ref('');
 
+// 多条件查询相关
+const buyerSearchForm = reactive({
+  userName: '',
+  phone: '',
+  email: '',
+  region: '',
+  createTimeRange: [],
+  isAdvancedSearch: false
+});
+
+// 地区选项
+const regionOptions = ref([]);
+
 // 商品选择对话框相关
 const productDialogVisible = ref(false);
 const allProducts = ref([]);
@@ -117,9 +130,31 @@ const getAllBuyers = async () => {
     const response = await axios.get('http://localhost:8080/api/user/all');
     console.log('Get all buyers success', response);
     allBuyers.value = response.data.data;
+    
+    // 提取地区选项
+    const regions = [...new Set(allBuyers.value.map(buyer => buyer.region).filter(region => region))];
+    regionOptions.value = regions.map(region => ({ label: region, value: region }));
   } catch (error) {
     console.log('Failed to get buyers', error);
     throw error;
+  }
+}
+
+// 重置买家搜索条件
+const resetBuyerSearch = () => {
+  buyerSearchForm.userName = '';
+  buyerSearchForm.phone = '';
+  buyerSearchForm.email = '';
+  buyerSearchForm.region = '';
+  buyerSearchForm.createTimeRange = [];
+  buyerSearchKeyword.value = '';
+}
+
+// 切换高级搜索模式
+const toggleAdvancedSearch = () => {
+  buyerSearchForm.isAdvancedSearch = !buyerSearchForm.isAdvancedSearch;
+  if (!buyerSearchForm.isAdvancedSearch) {
+    resetBuyerSearch();
   }
 }
 
@@ -212,14 +247,63 @@ const selectProduct = (product) => {
 
 // 过滤买家列表
 const filteredBuyers = computed(() => {
-  if (!buyerSearchKeyword.value) {
-    return allBuyers.value;
+  let list = allBuyers.value;
+  
+  // 简单搜索模式
+  if (!buyerSearchForm.isAdvancedSearch && buyerSearchKeyword.value) {
+    const keyword = buyerSearchKeyword.value.toLowerCase();
+    list = list.filter(buyer => 
+      buyer.userName.toLowerCase().includes(keyword) ||
+      buyer.phone.includes(keyword) ||
+      buyer.email.toLowerCase().includes(keyword) ||
+      (buyer.region && buyer.region.toLowerCase().includes(keyword))
+    );
   }
-  return allBuyers.value.filter(buyer => 
-    buyer.userName.toLowerCase().includes(buyerSearchKeyword.value.toLowerCase()) ||
-    buyer.phone.includes(buyerSearchKeyword.value) ||
-    buyer.email.toLowerCase().includes(buyerSearchKeyword.value.toLowerCase())
-  );
+  
+  // 高级搜索模式
+  if (buyerSearchForm.isAdvancedSearch) {
+    // 用户名搜索
+    if (buyerSearchForm.userName) {
+      list = list.filter(buyer => 
+        buyer.userName.toLowerCase().includes(buyerSearchForm.userName.toLowerCase())
+      );
+    }
+    
+    // 手机号搜索
+    if (buyerSearchForm.phone) {
+      list = list.filter(buyer => 
+        buyer.phone.includes(buyerSearchForm.phone)
+      );
+    }
+    
+    // 邮箱搜索
+    if (buyerSearchForm.email) {
+      list = list.filter(buyer => 
+        buyer.email.toLowerCase().includes(buyerSearchForm.email.toLowerCase())
+      );
+    }
+    
+    // 地区筛选
+    if (buyerSearchForm.region) {
+      list = list.filter(buyer => 
+        buyer.region === buyerSearchForm.region
+      );
+    }
+    
+    // 注册时间范围筛选
+    if (buyerSearchForm.createTimeRange && buyerSearchForm.createTimeRange.length === 2) {
+      const startDate = new Date(buyerSearchForm.createTimeRange[0]);
+      const endDate = new Date(buyerSearchForm.createTimeRange[1]);
+      endDate.setHours(23, 59, 59, 999); // 设置为当天结束时间
+      
+      list = list.filter(buyer => {
+        const createTime = new Date(buyer.createTime);
+        return createTime >= startDate && createTime <= endDate;
+      });
+    }
+  }
+  
+  return list;
 });
 
 // 过滤商品列表
@@ -375,20 +459,102 @@ const filteredProducts = computed(() => {
   <el-dialog
     v-model="buyerDialogVisible"
     title="选择买家"
-    width="800px"
+    width="1000px"
     :before-close="() => buyerDialogVisible = false"
   >
+    <!-- 搜索区域 -->
     <div style="margin-bottom: 20px;">
-      <el-input
-        v-model="buyerSearchKeyword"
-        placeholder="搜索买家（用户名、手机号、邮箱）"
-        clearable
-        style="width: 100%"
-      >
-        <template #prefix>
-          <el-icon><Search /></el-icon>
-        </template>
-      </el-input>
+      <!-- 简单搜索模式 -->
+      <div v-if="!buyerSearchForm.isAdvancedSearch" style="display: flex; gap: 16px; align-items: center;">
+        <el-input
+          v-model="buyerSearchKeyword"
+          placeholder="快速搜索（用户名、手机号、邮箱、地区）"
+          clearable
+          style="flex: 1"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        <el-button @click="toggleAdvancedSearch" type="primary" plain>
+          高级搜索
+        </el-button>
+      </div>
+      
+      <!-- 高级搜索模式 -->
+      <div v-if="buyerSearchForm.isAdvancedSearch">
+        <el-form :model="buyerSearchForm" label-width="80px" inline>
+          <el-form-item label="用户名">
+            <el-input
+              v-model="buyerSearchForm.userName"
+              placeholder="请输入用户名"
+              clearable
+              style="width: 150px"
+            />
+          </el-form-item>
+          
+          <el-form-item label="手机号">
+            <el-input
+              v-model="buyerSearchForm.phone"
+              placeholder="请输入手机号"
+              clearable
+              style="width: 150px"
+            />
+          </el-form-item>
+          
+          <el-form-item label="邮箱">
+            <el-input
+              v-model="buyerSearchForm.email"
+              placeholder="请输入邮箱"
+              clearable
+              style="width: 180px"
+            />
+          </el-form-item>
+          
+          <el-form-item label="地区">
+            <el-select
+              v-model="buyerSearchForm.region"
+              placeholder="请选择地区"
+              clearable
+              style="width: 120px"
+            >
+              <el-option
+                v-for="option in regionOptions"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+              />
+            </el-select>
+          </el-form-item>
+          
+          <el-form-item label="注册时间">
+            <el-date-picker
+              v-model="buyerSearchForm.createTimeRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+              style="width: 240px"
+            />
+          </el-form-item>
+        </el-form>
+        
+        <div style="margin-top: 12px; display: flex; gap: 12px;">
+          <el-button @click="resetBuyerSearch" type="info" plain>
+            重置条件
+          </el-button>
+          <el-button @click="toggleAdvancedSearch" type="primary" plain>
+            简单搜索
+          </el-button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 搜索结果统计 -->
+    <div style="margin-bottom: 16px; color: #909399; font-size: 14px;">
+      共找到 {{ filteredBuyers.length }} 个买家
     </div>
     
     <el-table
